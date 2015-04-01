@@ -156,7 +156,7 @@ Php::Value value(v8::Handle<v8::Value> input)
         v8::Local<v8::Array> array(input.As<v8::Array>());
 
         // iterate over all items in the array
-        for (int i = 0; i < array->Length(); ++i)
+        for (unsigned int i = 0; i < array->Length(); ++i)
         {
             // retrieve the value
             v8::Local<v8::Value> item(array->Get(i));
@@ -228,7 +228,7 @@ Php::Value value(v8::Handle<v8::Value> input)
         v8::Local<v8::Array>    properties(object->GetPropertyNames());
 
         // iterate over all properties in the object
-        for (int i = 0; i < properties->Length(); ++i)
+        for (unsigned int i = 0; i < properties->Length(); ++i)
         {
             // retrieve the property name
             v8::Local<v8::Value>    property(properties->Get(i));
