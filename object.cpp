@@ -41,14 +41,20 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
     // add all the arguments
     for (int i = 0; i < info.Length(); ++i) arguments.set(i, value(info[i]));
 
-    // now execute the function
-    // @todo 
-    //      this could throw an exception, should be caught and 
-    //      turned into a javascript exception
-    Php::Value result(Php::call("call_user_func_array", handle, arguments));
+    // catch any exceptions the PHP code might throw
+    try
+    {
+        // now execute the function
+        Php::Value result(Php::call("call_user_func_array", handle, arguments));
 
-    // cast the value and set it as return parameter
-    info.GetReturnValue().Set(value(result));
+        // cast the value and set it as return parameter
+        info.GetReturnValue().Set(value(result));
+    }
+    catch (const Php::Exception& exception)
+    {
+        // pass the exception on to javascript userspace
+        isolate()->ThrowException(v8::Exception::Error(v8::String::NewFromUtf8(isolate(), exception.what())));
+    }
 }
 
 /**
