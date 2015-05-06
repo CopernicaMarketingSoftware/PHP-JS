@@ -72,13 +72,36 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     Handle<Php::Object>     handle(info.Data());
     v8::String::Utf8Value   name(property);
 
-    // does the object we are retrieving from have a property with that name?
-    if (handle->contains(*name, name.length()))
-    {
-        // retrieve the value, convert it to a javascript handle and return it
-        info.GetReturnValue().Set(value(handle->get(*name, name.length())));
-    }
-    else if (handle->isCallable(*name))
+    /**
+     *  This is where it gets a little weird.
+     *
+     *  PHP has the concept of "magic functions", these are sort
+     *  of like operator overloading in C++, only much, much
+     *  clumsier.
+     *
+     *  The issue we have to work around is that, although it is
+     *  possible to write an __isset method to define which properties
+     *  are possible to retrieve with __get, there is no such sister
+     *  function for __call, which means that as soon as the __call
+     *  function is implemented, every function suddenly becomes
+     *  callable. This is a problem, because we would be creating
+     *  function objects to return to v8 instead of retrieving the
+     *  properties as expected.
+     *
+     *  Therefore we are using a three-step test. First we see if the
+     *  method exists, and is callable. This filters out __call, so if
+     *  this fails, we check to see if a property exists (or can be
+     *  retrieved with __get). If that fails, we try again if it is
+     *  callable (then it will be a __call for sure!)
+     */
+
+    // does the method exist, is it callable or is it a property
+    bool method_exists  = Php::call("method_exists", *handle, *name);
+    bool is_callable    = handle->isCallable(*name);
+    bool contains       = handle->contains(*name, name.length());
+
+    // can we call this as a function?
+    if (is_callable && (!contains || method_exists))
     {
         // create a new PHP array that will contain the object and the method to call
         Php::Array callable;
@@ -89,6 +112,12 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
 
         // create the function to be called
         info.GetReturnValue().Set(v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Array>(std::move(callable)))->GetFunction());
+    }
+    // does the object we are retrieving from have a property with that name?
+    else if (contains)
+    {
+        // retrieve the value, convert it to a javascript handle and return it
+        info.GetReturnValue().Set(value(handle->get(*name, name.length())));
     }
     else
     {
