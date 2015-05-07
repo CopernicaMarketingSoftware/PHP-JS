@@ -15,6 +15,7 @@
 #include "object.h"
 #include "handle.h"
 #include "value.h"
+#include <iostream>
 
 /**
  *  Start namespace
@@ -55,6 +56,38 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
         // pass the exception on to javascript userspace
         isolate()->ThrowException(v8::Exception::Error(v8::String::NewFromUtf8(isolate(), exception.what())));
     }
+}
+
+/**
+ *  Retrieve a list of properties for enumeration
+ *
+ *  @param  info        callback info
+ */
+static void enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
+{
+    // create a local handle, so properties "fall out of scope" and retrieve the original object
+    v8::HandleScope         scope(isolate());
+    Handle<Php::Object>     handle(info.Data());
+
+    // create a new array to store all the properties
+    v8::Local<v8::Array>    properties(v8::Array::New(isolate()));
+
+    // there is no 'push' method on v8::Array, so we simply have
+    // to 'Set' the property with the correct index, declared here
+    uint32_t index = 0;
+
+    // iterate over the properties in the object
+    for (auto &property : *handle)
+    {
+        // are we dealing with a string here? just set it directly
+        if (property.first.isString()) properties->Set(index++, v8::String::NewFromUtf8(isolate(), property.first));
+
+        // if not, we have to clone it to a string and then retrieve the value
+        else properties->Set(index++, v8::String::NewFromUtf8(isolate(), property.first.clone(Php::Type::String)));
+    }
+
+    // set the value as the 'return' parameter
+    info.GetReturnValue().Set(properties);
 }
 
 /**
@@ -157,7 +190,7 @@ Object::Object(Php::Object object) :
     if (object.isCallable()) _template->SetCallAsFunctionHandler(callback, Handle<Php::Value>(object));
 
     // register the property handlers
-    _template->SetNamedPropertyHandler(getter, setter, nullptr, nullptr, nullptr, Handle<Php::Object>(object));
+    _template->SetNamedPropertyHandler(getter, setter, nullptr, nullptr, enumerator, Handle<Php::Object>(object));
 }
 
 /**
