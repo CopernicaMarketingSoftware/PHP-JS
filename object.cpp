@@ -33,7 +33,7 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
     v8::HandleScope     scope(isolate());
 
     // retrieve handle to the original object
-    Handle<Php::Array>  handle(info.Data());
+    Handle<Php::Value>  handle(info.Data());
 
     // an array to hold all the arguments
     Php::Array arguments;
@@ -104,14 +104,14 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     if (is_callable && (!contains || method_exists))
     {
         // create a new PHP array that will contain the object and the method to call
-        Php::Array callable;
+        Php::Value callable(Php::Type::Array);
 
         // add the object and the method to call
         callable.set(0, *handle);
         callable.set(1, Php::Value(*name, name.length()));
 
         // create the function to be called
-        info.GetReturnValue().Set(v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Array>(std::move(callable)))->GetFunction());
+        info.GetReturnValue().Set(v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
     }
     // does the object we are retrieving from have a property with that name?
     else if (contains)
@@ -153,6 +153,9 @@ static void setter(v8::Local<v8::String> property, v8::Local<v8::Value> input, c
 Object::Object(Php::Object object) :
     _template(v8::ObjectTemplate::New())
 {
+    // if the object can be invoked as a function, we register the callback
+    if (object.isCallable()) _template->SetCallAsFunctionHandler(callback, Handle<Php::Value>(object));
+
     // register the property handlers
     _template->SetNamedPropertyHandler(getter, setter, nullptr, nullptr, nullptr, Handle<Php::Object>(object));
 }
