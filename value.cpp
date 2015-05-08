@@ -14,6 +14,7 @@
 #include "isolate.h"
 #include "handle.h"
 #include "object.h"
+#include "jsobject.h"
 
 /**
  *  Start namespace
@@ -229,6 +230,9 @@ Php::Value value(v8::Handle<v8::Value> input)
     // or perhaps an object
     if (input->IsObject())
     {
+        // create a new js object and convert it to userspace
+        return Php::Object("JS\\Object", new JSObject(input.As<v8::Object>()));
+
         // the result to return
         Php::Object             result;
 

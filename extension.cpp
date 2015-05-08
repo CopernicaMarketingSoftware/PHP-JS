@@ -11,6 +11,7 @@
  */
 #include <phpcpp.h>
 #include "context.h"
+#include "jsobject.h"
 
 /**
  *  The VERSION macro is going to be used as string with surrounded quotes
@@ -58,8 +59,12 @@ extern "C" {
             Php::ByVal("script", Php::Type::String, true)
         });
 
+        // an empty class for exporting object from ecmascript
+        Php::Class<JS::JSObject> object("JS\\Object");
+
         // add the classes to the extension
         extension.add(std::move(context));
+        extension.add(std::move(object));
 
         // return the extension
         return extension;

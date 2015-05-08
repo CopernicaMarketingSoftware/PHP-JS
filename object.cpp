@@ -15,7 +15,6 @@
 #include "object.h"
 #include "handle.h"
 #include "value.h"
-#include <iostream>
 
 /**
  *  Start namespace
