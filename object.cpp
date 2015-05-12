@@ -23,6 +23,35 @@
 namespace JS {
 
 /**
+ *  Find the highest existing numerical index in the object
+ *
+ *  @param  object  The object to count
+ *  @return the number of numeric, sequential keys
+ */
+static uint32_t count(const Php::Object &object)
+{
+    // the variable to store count
+    int64_t result = 0;
+
+    // loop over all the properties
+    for (auto &property : object)
+    {
+        // is it numeric and greater than what we've seen before?
+        if (property.first.isNumeric() && property.first >= result)
+        {
+            // store it
+            result = property.first;
+
+            // add another one
+            ++result;
+        }
+    }
+
+    // return the number of keys in the object
+    return static_cast<uint32_t>(result);
+}
+
+/**
  *  Callback function to be used when invoking
  *  member functions defined from the PHP side
  *
@@ -59,11 +88,11 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
 }
 
 /**
- *  Retrieve a list of properties for enumeration
+ *  Retrieve a list of numeric properties for enumeration
  *
  *  @param  info        callback info
  */
-static void enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
+static void indexed_enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
     v8::HandleScope         scope(isolate());
@@ -79,6 +108,41 @@ static void enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
     // iterate over the properties in the object
     for (auto &property : *handle)
     {
+        // we only care about numeric indices
+        if (!property.first.isNumeric()) continue;
+
+        // add the property to the list
+        properties->Set(index++, value(property.first));
+    }
+
+    // set the value as the 'return' parameter
+    info.GetReturnValue().Set(properties);
+}
+
+/**
+ *  Retrieve a list of string properties for enumeration
+ *
+ *  @param  info        callback info
+ */
+static void named_enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
+{
+    // create a local handle, so properties "fall out of scope" and retrieve the original object
+    v8::HandleScope         scope(isolate());
+    Handle<Php::Object>     handle(info.Data());
+
+    // create a new array to store all the properties
+    v8::Local<v8::Array>    properties(v8::Array::New(isolate()));
+
+    // there is no 'push' method on v8::Array, so we simply have
+    // to 'Set' the property with the correct index, declared here
+    uint32_t index = 0;
+
+    // iterate over the properties in the object
+    for (auto &property : *handle)
+    {
+        // we only care about string indices
+        if (!property.first.isString()) continue;
+
         // add the property to the list
         properties->Set(index++, value(property.first));
     }
@@ -158,12 +222,8 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     // can we call this as a function?
     if (is_callable && (!contains || method_exists))
     {
-        // create a new PHP array that will contain the object and the method to call
-        Php::Value callable(Php::Type::Array);
-
-        // add the object and the method to call
-        callable.set(0, *handle);
-        callable.set(1, Php::Value(*name, name.length()));
+        // create an array with the object and the method to be called
+        Php::Array callable({ *handle, Php::Value{ *name, name.length() } });
 
         // create the function to be called
         info.GetReturnValue().Set(v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
@@ -178,7 +238,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     else if (std::strcmp(*name, "length") == 0 && handle->instanceOf("Countable"))
     {
         // return the count from this object
-        info.GetReturnValue().Set(value(Php::count(*handle)));
+        info.GetReturnValue().Set(count(*handle));
     }
     else if (handle->instanceOf("ArrayAccess") && handle->call("offsetExists", *name))
     {
@@ -217,14 +277,22 @@ static void setter(uint32_t index, v8::Local<v8::Value> input, const v8::Propert
  */
 static void setter(v8::Local<v8::String> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
-    // retrieve handle to the original object
-    Handle<Php::Object> handle(info.Data());
-
-    // convert the requested property into a utf8 value (which is castable to a const char *)
+    // retrieve handle to the original object and convert the requested property
+    Handle<Php::Object>     handle(info.Data());
     v8::String::Utf8Value   name(property);
 
-    // store the property inside the object
-    handle->set(*name, name.length(), value(input));
+    // if the object is not implementing ArrayAccess or has the given property as a member
+    // then we set it directly, otherwise we use the offsetSet method to use it as an array
+    if (!handle->instanceOf("ArrayAccess") || handle->contains(*name, name.length()))
+    {
+        // store the property inside the object
+        handle->set(*name, name.length(), value(input));
+    }
+    else
+    {
+        // set it as an array offset
+        handle->call("offsetSet", Php::Value{ *name, name.length() }, value(input));
+    }
 }
 
 /**
@@ -239,10 +307,10 @@ Object::Object(Php::Object object) :
     if (object.isCallable()) _template->SetCallAsFunctionHandler(callback, Handle<Php::Value>(object));
 
     // register the property handlers
-    _template->SetNamedPropertyHandler(getter, setter, nullptr, nullptr, enumerator, Handle<Php::Object>(object));
+    _template->SetNamedPropertyHandler(getter, setter, nullptr, nullptr, named_enumerator, Handle<Php::Object>(object));
 
     // if the object implements the ArrayAccess interface, we should also set the indexed property handler
-    if (object.instanceOf("ArrayAccess")) _template->SetIndexedPropertyHandler(getter, setter, nullptr, nullptr, nullptr, Handle<Php::Object>(object));
+    if (object.instanceOf("ArrayAccess")) _template->SetIndexedPropertyHandler(getter, setter, nullptr, nullptr, indexed_enumerator, Handle<Php::Object>(object));
 }
 
 /**

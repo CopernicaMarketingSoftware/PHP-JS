@@ -14,6 +14,7 @@
 #include "isolate.h"
 #include "handle.h"
 #include "object.h"
+#include "array.h"
 #include "jsobject.h"
 
 /**
@@ -81,23 +82,7 @@ v8::Handle<v8::Value> value(const Php::Value &input)
         case Php::Type::String:     result = v8::String::NewFromUtf8(isolate(), input);                                                 break;
         case Php::Type::Object:     result = Object(input);                                                                             break;
         case Php::Type::Callable:   result = v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(input))->GetFunction();  break;
-        case Php::Type::Array:
-        {
-            // create a new object, this may be wildly suboptimal
-            // if we are working with a sequantially indexed PHP
-            // array, but since testing for this also involves
-            // iterating the entire array we just ignore this
-            v8::Local<v8::Object> object(v8::Object::New(isolate()));
-
-            // iterate over all properties in the PHP array and add them to the object
-            for (auto iter : input) object->Set(value(iter.first), value(iter.second));
-
-            // and now store the object in the result
-            result = object;
-
-            // victory!
-            break;
-        }
+        case Php::Type::Array:      result = Array(input);                                                                              break;
         default:
             break;
     }
