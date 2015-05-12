@@ -79,22 +79,7 @@ v8::Handle<v8::Value> value(const Php::Value &input)
         case Php::Type::Float:      result = v8::Number::New(isolate(), input);                                                         break;
         case Php::Type::Bool:       result = v8::Boolean::New(isolate(), input);                                                        break;
         case Php::Type::String:     result = v8::String::NewFromUtf8(isolate(), input);                                                 break;
-        case Php::Type::Object:
-            /**
-             *  PHP is a fickle thing, callables are sometimes just
-             *  "objects" with a class that either is, or inherits from,
-             *  the Closure class.
-             */
-            if (!input.instanceOf("Closure"))
-            {
-                // convert to an object
-                result = Object(input);
-
-                // done
-                break;
-            }
-
-            // we are callable, fall through
+        case Php::Type::Object:     result = Object(input);                                                                             break;
         case Php::Type::Callable:   result = v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(input))->GetFunction();  break;
         case Php::Type::Array:
         {
