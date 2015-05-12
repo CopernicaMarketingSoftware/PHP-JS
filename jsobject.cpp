@@ -173,6 +173,17 @@ Php::Iterator *JSObject::getIterator()
 }
 
 /**
+ *  Retrieve the original ecmascript value
+ *
+ *  @return original ecmascript value
+ */
+v8::Local<v8::Object> JSObject::object() const
+{
+    // the stack has the original object
+    return _object;
+}
+
+/**
  *  End namespace
  */
 }

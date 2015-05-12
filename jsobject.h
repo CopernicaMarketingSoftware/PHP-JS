@@ -145,6 +145,13 @@ public:
      *  @return The iterator
      */
     Php::Iterator *getIterator() override;
+
+    /**
+     *  Retrieve the original ecmascript value
+     *
+     *  @return original ecmascript value
+     */
+    v8::Local<v8::Object> object() const;
 };
 
 /**

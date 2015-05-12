@@ -72,19 +72,28 @@ v8::Handle<v8::Value> value(const Php::Value &input)
     // the result value we are assigning
     v8::Local<v8::Value>        result;
 
-    // the value can be of many types
-    switch (input.type())
+    // are we dealing with a value originally from ecmascript?
+    if (input.instanceOf("JS\\Object"))
     {
-        case Php::Type::Null:       /* don't set anything, let it be empty */                                                           break;
-        case Php::Type::Numeric:    result = v8::Integer::New(isolate(), input);                                                        break;
-        case Php::Type::Float:      result = v8::Number::New(isolate(), input);                                                         break;
-        case Php::Type::Bool:       result = v8::Boolean::New(isolate(), input);                                                        break;
-        case Php::Type::String:     result = v8::String::NewFromUtf8(isolate(), input);                                                 break;
-        case Php::Type::Object:     result = Object(input);                                                                             break;
-        case Php::Type::Callable:   result = v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(input))->GetFunction();  break;
-        case Php::Type::Array:      result = Array(input);                                                                              break;
-        default:
-            break;
+        // cast the input to the original object
+        result = static_cast<JSObject*>(input.implementation())->object();
+    }
+    else
+    {
+        // the value can be of many types
+        switch (input.type())
+        {
+            case Php::Type::Null:       /* don't set anything, let it be empty */                                                           break;
+            case Php::Type::Numeric:    result = v8::Integer::New(isolate(), input);                                                        break;
+            case Php::Type::Float:      result = v8::Number::New(isolate(), input);                                                         break;
+            case Php::Type::Bool:       result = v8::Boolean::New(isolate(), input);                                                        break;
+            case Php::Type::String:     result = v8::String::NewFromUtf8(isolate(), input);                                                 break;
+            case Php::Type::Object:     result = Object(input);                                                                             break;
+            case Php::Type::Callable:   result = v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(input))->GetFunction();  break;
+            case Php::Type::Array:      result = Array(input);                                                                              break;
+            default:
+                break;
+        }
     }
 
     // return the value by "escaping" it
@@ -177,8 +186,24 @@ Php::Value value(v8::Handle<v8::Value> input)
     // or perhaps an object
     if (input->IsObject())
     {
+        // retrieve the object and the first internal field
+        auto object = input.As<v8::Object>();
+        auto field  = object->GetInternalField(0);
+
+        // does it have an internal field and is it external? we are converting back
+        // an original PHP object, just retrieve the original thing that came from PHP
+        if (!field.IsEmpty() && field->IsExternal())
+        {
+            // the PHP value is stored in the first internal field,
+            // retrieve it and create the handle around it
+            Handle<Php::Object> handle(field);
+
+            // dereference and return it
+            return *handle;
+        }
+
         // create a new js object and convert it to userspace
-        return Php::Object("JS\\Object", new JSObject(input.As<v8::Object>()));
+        return Php::Object("JS\\Object", new JSObject(object));
     }
 
     // we sadly don't support this type of value

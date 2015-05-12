@@ -37,6 +37,12 @@ private:
      *  @var    Stack<v8::ObjectTemplate>
      */
     Stack<v8::ObjectTemplate> _template;
+
+    /**
+     *  The PHP object we wrap
+     *  @var    Php::Object
+     */
+    Php::Object _object;
 public:
     /**
      *  Constructor
