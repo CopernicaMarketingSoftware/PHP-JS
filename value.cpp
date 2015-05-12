@@ -126,29 +126,6 @@ Php::Value value(v8::Handle<v8::Value> input)
         return {*utf8, utf8.length()};
     }
 
-    // is this an array
-    if (input->IsArray())
-    {
-        // the result to return
-        Php::Array result;
-
-        // cast to an array
-        v8::Local<v8::Array> array(input.As<v8::Array>());
-
-        // iterate over all items in the array
-        for (unsigned int i = 0; i < array->Length(); ++i)
-        {
-            // retrieve the value
-            v8::Local<v8::Value> item(array->Get(i));
-
-            // and add it to the result object
-            result.set(i, value(item));
-        }
-
-        // now return the result
-        return result;
-    }
-
     // it could be callable too
     if (input->IsFunction())
     {
@@ -202,30 +179,6 @@ Php::Value value(v8::Handle<v8::Value> input)
     {
         // create a new js object and convert it to userspace
         return Php::Object("JS\\Object", new JSObject(input.As<v8::Object>()));
-
-        // the result to return
-        Php::Object             result;
-
-        // cast to an object and retrieve all properties
-        v8::Local<v8::Object>   object(input.As<v8::Object>());
-        v8::Local<v8::Array>    properties(object->GetPropertyNames());
-
-        // iterate over all properties in the object
-        for (unsigned int i = 0; i < properties->Length(); ++i)
-        {
-            // retrieve the property name
-            v8::Local<v8::Value>    property(properties->Get(i));
-            v8::String::Utf8Value   name(property->ToString());
-
-            // retrieve the value
-            v8::Local<v8::Value>    item(object->Get(property));
-
-            // and add it to the result object
-            result.set(*name, name.length(), value(item));
-        }
-
-        // now return the result
-        return result;
     }
 
     // we sadly don't support this type of value
