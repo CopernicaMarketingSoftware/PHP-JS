@@ -15,6 +15,7 @@
 #include "object.h"
 #include "handle.h"
 #include "value.h"
+#include <cstring>
 
 /**
  *  Start namespace
@@ -78,15 +79,37 @@ static void enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
     // iterate over the properties in the object
     for (auto &property : *handle)
     {
-        // are we dealing with a string here? just set it directly
-        if (property.first.isString()) properties->Set(index++, v8::String::NewFromUtf8(isolate(), property.first));
-
-        // if not, we have to clone it to a string and then retrieve the value
-        else properties->Set(index++, v8::String::NewFromUtf8(isolate(), property.first.clone(Php::Type::String)));
+        // add the property to the list
+        properties->Set(index++, value(property.first));
     }
 
     // set the value as the 'return' parameter
     info.GetReturnValue().Set(properties);
+}
+
+/**
+ *  Retrieve a property or function from the object
+ *
+ *  @param  index       The index to find the property
+ *  @param  info        callback info
+ */
+static void getter(uint32_t index, const v8::PropertyCallbackInfo<v8::Value> &info)
+{
+    // create a local handle, so properties "fall out of scope" and retrieve the original object
+    v8::HandleScope         scope(isolate());
+    Handle<Php::Object>     handle(info.Data());
+
+    // check if we have an item at the requested offset
+    if (handle->call("offsetExists", static_cast<int64_t>(index)))
+    {
+        // retrieve the variable and store it as the result variable
+        info.GetReturnValue().Set(value(handle->call("offsetGet", static_cast<int64_t>(index))));
+    }
+    else
+    {
+        // in javascript, retrieving an unset object property returns undefined
+        info.GetReturnValue().SetUndefined();
+    }
 }
 
 /**
@@ -151,11 +174,38 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
         // retrieve the value, convert it to a javascript handle and return it
         info.GetReturnValue().Set(value(handle->get(*name, name.length())));
     }
+    // is it a countable object we want the length off?
+    else if (std::strcmp(*name, "length") == 0 && handle->instanceOf("Countable"))
+    {
+        // return the count from this object
+        info.GetReturnValue().Set(value(Php::count(*handle)));
+    }
+    else if (handle->instanceOf("ArrayAccess") && handle->call("offsetExists", *name))
+    {
+        // use the array access to retrieve the property
+        info.GetReturnValue().Set(value(handle->call("offsetGet", *name)));
+    }
     else
     {
         // in javascript, retrieving an unset object property returns undefined
         info.GetReturnValue().SetUndefined();
     }
+}
+
+/**
+ *  Set a property or function on the object
+ *
+ *  @param  index       the index to find the property
+ *  @param  input       the new property value
+ *  @param  info        callback info
+ */
+static void setter(uint32_t index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<v8::Value>& info)
+{
+    // retrieve handle to the original object
+    Handle<Php::Object> handle(info.Data());
+
+    // store the property inside the object
+    handle->call("offsetSet", static_cast<int64_t>(index), value(input));
 }
 
 /**
@@ -190,6 +240,9 @@ Object::Object(Php::Object object) :
 
     // register the property handlers
     _template->SetNamedPropertyHandler(getter, setter, nullptr, nullptr, enumerator, Handle<Php::Object>(object));
+
+    // if the object implements the ArrayAccess interface, we should also set the indexed property handler
+    if (object.instanceOf("ArrayAccess")) _template->SetIndexedPropertyHandler(getter, setter, nullptr, nullptr, nullptr, Handle<Php::Object>(object));
 }
 
 /**
