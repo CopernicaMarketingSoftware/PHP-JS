@@ -61,7 +61,7 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve a handle to the original object
     v8::HandleScope     scope(isolate());
-    Handle<Php::Object> handle(info.Holder()->GetInternalField(0));
+    Handle<Php::Object> handle(info.Data());
 
     // an array to hold all the arguments
     Php::Array arguments;
@@ -217,17 +217,8 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     bool is_callable    = handle->isCallable(*name);
     bool contains       = handle->contains(*name, name.length());
 
-    // can we call this as a function?
-    if (is_callable && (!contains || method_exists))
-    {
-        // create an array with the object and the method to be called
-        Php::Array callable({ *handle, Php::Value{ *name, name.length() } });
-
-        // create the function to be called
-        info.GetReturnValue().Set(v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
-    }
-    // does the object we are retrieving from have a property with that name?
-    else if (contains)
+    // does a property exist by the given name and is it not defined as a method?
+    if (contains && !method_exists)
     {
         // retrieve the value, convert it to a javascript handle and return it
         info.GetReturnValue().Set(value(handle->get(*name, name.length())));
@@ -242,6 +233,22 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     {
         // use the array access to retrieve the property
         info.GetReturnValue().Set(value(handle->call("offsetGet", *name)));
+    }
+    else if (handle->isCallable("__toString") && (std::strcmp(*name, "valueOf") == 0 || std::strcmp(*name, "toString") == 0))
+    {
+        // create an array with the object and the __toString method to invoke
+        Php::Array callable({ *handle, Php::Value{ "__toString", 10 } });
+
+        // create the function to be called
+        info.GetReturnValue().Set(v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
+    }
+    else if (is_callable)
+    {
+        // create an array with the object and the method to be called
+        Php::Array callable({ *handle, Php::Value{ *name, name.length() } });
+
+        // create the function to be called
+        info.GetReturnValue().Set(v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
     }
     else
     {
