@@ -30,7 +30,7 @@ namespace JS {
 /**
  *  Private class
  */
-class Isolate final : private v8::ArrayBuffer::Allocator
+class Isolate final
 {
 private:
     /**
@@ -40,52 +40,10 @@ private:
     Platform _platform;
 
     /**
-     *  The isolate creation parameters
-     *  @var    v8::Isolate::CreateParams
-     */
-    v8::Isolate::CreateParams _params;
-
-    /**
      *  The underlying isolate
      *  @var    v8::Isolate*
      */
     v8::Isolate *_isolate;
-
-    /**
-     *  Allocate a range of memory, zero-initialized.
-     *
-     *  @param  size    The number of bytes to allocate
-     *  @return Pointer to the allocated memory, or a nullptr
-     */
-    void *Allocate(size_t size) override
-    {
-        // request some cleared memory
-        return std::calloc(size, 1);
-    }
-
-    /**
-     *  Allocate a range of memory, uninitialized.
-     *
-     *  @param  size    The number of bytes to allocate
-     *  @return Pointer to the allocated memory, or a nullptr
-     */
-    void *AllocateUninitialized(size_t size) override
-    {
-        // request some uninitialized memory
-        return std::malloc(size);
-    }
-
-    /**
-     *  Free some allocated memory
-     *
-     *  @param  data    Pointer to memory to free
-     *  @param  size    Number of bytes to free
-     */
-    void Free(void *data, size_t size) override
-    {
-        // free the allocated memory
-        std::free(data);
-    }
 public:
     /**
      *  Constructor
@@ -97,11 +55,8 @@ public:
         v8::V8::InitializePlatform(&_platform);
         v8::V8::Initialize();
 
-        // initialize the parameters
-        _params.array_buffer_allocator = this;
-
         // create the actual isolate
-        _isolate = v8::Isolate::New(_params);
+        _isolate = v8::Isolate::New();
 
         // and enter it
         _isolate->Enter();
