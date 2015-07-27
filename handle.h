@@ -18,6 +18,7 @@
  *  Dependencies
  */
 #include <v8.h>
+#include <utility>
 #include "isolate.h"
 
 /**
@@ -33,6 +34,73 @@ class Handle
 {
 private:
     /**
+     *  Nested class holding both the object
+     *  and the persistent handle to it
+     */
+    class Object
+    {
+    private:
+        /**
+         *  The allocated object
+         *  @var    T
+         */
+        T _object;
+
+        /**
+         *  The persistent handle
+         *  @var    v8::Persistent<v8::Value>
+         */
+        v8::Persistent<v8::Value> _persistent;
+    public:
+        /**
+         *  Constructor
+         *
+         *  @param  object  The object to keep in memory
+         */
+        Object(T &&object) :
+            _object(std::move(object))
+            // persistent will be initialized later
+        {}
+
+        /**
+         *  Destructor
+         */
+        ~Object()
+        {
+            /**
+             *  Reset the persistent handle
+             *
+             *  One would assume the fact that the persistent is destructed
+             *  would be enough indication to v8 that the handle is now garbage,
+             *  but alas, if we don't call this v8 will trip over and assume
+             *  that the object is still alive and then complain about it.
+             */
+            _persistent.Reset();
+        }
+
+        /**
+         *  Initialize the persistent handle
+         */
+        void initialize(const v8::Local<v8::External> &handle)
+        {
+            // create the persistent handle and make it weak
+            _persistent.Reset(isolate(), handle);
+            _persistent.SetWeak<Object>(this, &destructor);
+        }
+
+        /**
+         *  Get pointer to the underlying object
+         *
+         *  @return T*
+         */
+        T *get()
+        {
+            // return the pointer
+            return &_object;
+        }
+    };
+
+    /**
      *  The v8 handle to the object
      *  @var    v8::Handle<v8::External>
      */
@@ -43,7 +111,7 @@ private:
      *
      *  @param  data    callback data
      */
-    static void destructor(const v8::WeakCallbackData<v8::Value, T>& data)
+    static void destructor(const v8::WeakCallbackData<v8::Value, Object> &data)
     {
         // delete the object
         delete data.GetParameter();
@@ -54,39 +122,27 @@ public:
      *
      *  @param  object  the object to handle
      */
-    Handle(const T &object)
+    Handle(T object)
     {
-        // make a copy of the object
-        auto *copy = new T(object);
+        /**
+         *  Create a copy of the object and a persistent
+         *  handle for it. Even though you won't find it
+         *  anywhere in the documentation: the persistent
+         *  handle _must_ stay in memory, because if it
+         *  gets destructed it will forget that it was
+         *  made weak. It won't forget to keep a reference
+         *  alive though, resulting in memory leaks and
+         *  - eventually - failing assertions from within
+         *  v8 itself. Yes, it realises it made a mistake
+         *  and rewards us by crashing.
+         */
+        auto *copy= new Object(std::move(object));
 
         // create the v8 handle around it
-        _handle = v8::External::New(isolate(), copy);
+        _handle = v8::External::New(isolate(), copy->get());
 
-        // create a persistent handle
-        v8::Persistent<v8::Value> persistent(isolate(), _handle);
-
-        // and make it a 'weak' persistent handle, so it gets garbage collectde
-        persistent.SetWeak<T>(copy, &destructor);
-    }
-
-    /**
-     *  Constructor
-     *
-     *  @param  object  the object to handle
-     */
-    Handle(T &&object)
-    {
-        // make a copy of the object
-        auto *copy = new T(std::move(object));
-
-        // create the v8 handle around it
-        _handle = v8::External::New(isolate(), copy);
-
-        // create a persistent handle
-        v8::Persistent<v8::Value> persistent(isolate(), _handle);
-
-        // and make it a 'weak' persistent handle, so it gets garbage collectde
-        persistent.SetWeak<T>(copy, &destructor);
+        // initialize the persistent handle
+        copy->initialize(_handle);
     }
 
     /**
