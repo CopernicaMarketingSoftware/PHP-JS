@@ -87,7 +87,7 @@ LINKER				=	c++
 
 COMPILER_FLAGS		=	-Wall -c -O2 -std=c++11 -fpic -DVERSION="`./version.sh`" -I. -g
 LINKER_FLAGS		=	-shared
-LINKER_DEPENDENCIES	=	-lphpcpp -lv8 -licui18n
+LINKER_DEPENDENCIES	=	-lphpcpp -lv8
 
 
 #
