@@ -36,7 +36,7 @@ extern "C" {
     {
         // static(!) Php::Extension object that should stay in memory
         // for the entire duration of the process (that's why it's static)
-        static Php::Extension extension("PxJavascript", THE_VERSION);
+        static Php::Extension extension("PHP-JS", THE_VERSION);
 
         // declare the accessor attributes
         extension.add(Php::Constant("JS\\None",         v8::None));
