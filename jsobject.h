@@ -149,6 +149,13 @@ public:
     Php::Value __call(const char *name, Php::Parameters &params);
 
     /**
+     *  Cast to a string
+     *
+     *  @return The result of the string conversion
+     */
+    Php::Value __toString();
+
+    /**
      *  Retrieve the iterator
      *
      *  @return The iterator

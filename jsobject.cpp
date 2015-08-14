@@ -189,6 +189,21 @@ Php::Value JSObject::__call(const char *name, Php::Parameters &params)
 }
 
 /**
+ *  Cast to a string
+ *
+ *  @return The result of the string conversion
+ */
+Php::Value JSObject::__toString()
+{
+    // create a handle scope, so variables "fall out of scope" and "enter" the context
+    v8::HandleScope         scope(isolate());
+    v8::Context::Scope      context(_object->CreationContext());
+
+    // convert to string and then to php
+    return value(_object->ToString());
+}
+
+/**
  *  Retrieve the iterator
  *
  *  @return The iterator
