@@ -188,18 +188,24 @@ Php::Value value(v8::Handle<v8::Value> input)
     {
         // retrieve the object and the first internal field
         auto object = input.As<v8::Object>();
-        auto field  = object->GetInternalField(0);
 
-        // does it have an internal field and is it external? we are converting back
-        // an original PHP object, just retrieve the original thing that came from PHP
-        if (!field.IsEmpty() && field->IsExternal())
+        // does the object have internal fields?
+        if (object->InternalFieldCount())
         {
-            // the PHP value is stored in the first internal field,
-            // retrieve it and create the handle around it
-            Handle<Php::Object> handle(field);
+            // retrieve the field
+            auto field  = object->GetInternalField(0);
 
-            // dereference and return it
-            return *handle;
+            // does it have an internal field and is it external? we are converting back
+            // an original PHP object, just retrieve the original thing that came from PHP
+            if (!field.IsEmpty() && field->IsExternal())
+            {
+                // the PHP value is stored in the first internal field,
+                // retrieve it and create the handle around it
+                Handle<Php::Object> handle(field);
+
+                // dereference and return it
+                return *handle;
+            }
         }
 
         // create a new js object and convert it to userspace
