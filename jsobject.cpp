@@ -161,6 +161,34 @@ bool JSObject::__isset(const Php::Value &name)
 }
 
 /**
+ *  Call a function
+ *
+ *  @param  name        Name of the function to call
+ *  @param  params      The input parameters
+ *  @return The result of the function call
+ */
+Php::Value JSObject::__call(const char *name, Php::Parameters &params)
+{
+    // create a handle scope, so variables "fall out of scope", "enter" the context and retrieve the value
+    v8::HandleScope                     scope(isolate());
+    v8::Context::Scope                  context(_object->CreationContext());
+    v8::Local<v8::Function>             function(_object->Get(value(name)).As<v8::Function>());
+    std::vector<v8::Local<v8::Value>>   input;
+
+    // check whether the value actually exists
+    if (function.IsEmpty())             throw Php::Exception(std::string{ "No such method: " } + name);
+
+    // reserve space for the input values
+    input.reserve(params.size());
+
+    // fill all the elements
+    for (auto &param : params) input.push_back(value(param));
+
+    // execute the function and return the result
+    return value(function->Call(static_cast<v8::Local<v8::Object>>(_object), input.size(), input.data()));
+}
+
+/**
  *  Retrieve the iterator
  *
  *  @return The iterator

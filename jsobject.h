@@ -140,6 +140,15 @@ public:
     bool __isset(const Php::Value &name);
 
     /**
+     *  Call a function
+     *
+     *  @param  name        Name of the function to call
+     *  @param  params      The input parameters
+     *  @return The result of the function call
+     */
+    Php::Value __call(const char *name, Php::Parameters &params);
+
+    /**
      *  Retrieve the iterator
      *
      *  @return The iterator

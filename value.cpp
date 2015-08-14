@@ -126,7 +126,7 @@ Php::Value value(v8::Handle<v8::Value> input)
 
     // special treatment for string-like types
     // TODO: javascript dates might possibly be cast to a DateTime object
-    if (input->IsString() || input->IsStringObject() || input->IsRegExp() || input->IsDate())
+    if (input->IsString() || input->IsStringObject() || input->IsRegExp())
     {
         // create the utf8 value (the only way to retrieve the content)
         v8::String::Utf8Value   utf8(input->ToString());
