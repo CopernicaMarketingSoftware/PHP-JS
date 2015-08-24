@@ -56,7 +56,8 @@ extern "C" {
 
         // add a method to execute some script
         context.method("evaluate", &JS::Context::evaluate, {
-            Php::ByVal("script", Php::Type::String, true)
+            Php::ByVal("script", Php::Type::String, true),
+            Php::ByVal("timeout", Php::Type::Numeric, false)
         });
 
         // an empty class for exporting object from ecmascript

@@ -92,6 +92,9 @@ void Context::assign(Php::Parameters &params)
  */
 Php::Value Context::evaluate(Php::Parameters &params)
 {
+    // retrieve the optional timeout variable
+    int timeout = (params.size() >= 2 ? params[1].numericValue() : 0);
+
     // create a handle, so that all variables fall "out of scope"
     v8::HandleScope         scope(isolate());
 
@@ -113,13 +116,16 @@ Php::Value Context::evaluate(Php::Parameters &params)
     std::unique_lock<std::mutex> lock(done);
 
     // create a temporary thread which will mostly just sleep, but kill the script after a certain time period
-    std::thread aborter([this, &condition, &lock]() {
+    std::unique_ptr<std::thread> aborter;
+
+    // only create this thread if our timeout is higher than 0
+    if (timeout > 0) aborter.reset(new std::thread([this, &condition, &lock]() {
 
         // we wait until some point in the future, in case we timeout we terminate execution
         if (condition.wait_until(lock, std::chrono::system_clock::now() + std::chrono::seconds(5)) == std::cv_status::timeout)
             _context->GetIsolate()->TerminateExecution();
 
-    });
+    }));
 
     // execute the script
     v8::Local<v8::Value>    result(script->Run());
@@ -128,7 +134,7 @@ Php::Value Context::evaluate(Php::Parameters &params)
     if (catcher.HasCaught())
     {
         // join our aborting thread
-        aborter.join();
+        if (aborter) aborter->join();
 
         // if we have terminated we just throw a fixed error message as the catcher.Message()
         // method won't return anything useful (in fact it'll return nothing meaning we just segfault)
@@ -151,7 +157,7 @@ Php::Value Context::evaluate(Php::Parameters &params)
         condition.notify_one();
 
         // join our aborter thread
-        aborter.join();
+        if (aborter) aborter->join();
     }
 
     // return the result
