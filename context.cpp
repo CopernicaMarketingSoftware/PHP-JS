@@ -14,6 +14,11 @@
 #include "isolate.h"
 #include "value.h"
 
+#include <condition_variable>
+#include <chrono>
+#include <thread>
+#include <mutex>
+
 /**
  *  Start namespace
  */
@@ -100,12 +105,35 @@ Php::Value Context::evaluate(Php::Parameters &params)
     v8::Local<v8::String>   source(v8::String::NewFromUtf8(isolate(), params[0]));
     v8::Local<v8::Script>   script(v8::Script::Compile(source));
 
+    // we create a simple mutex, condition_variable and a lock so we can use wait_until on
+    // another thread which we can stop from our main thread. We use this to maybe abort
+    // execution of javascript after a certain amount of time.
+    std::mutex done;
+    std::condition_variable condition;
+    std::unique_lock<std::mutex> lock(done);
+
+    // create a temporary thread which will mostly just sleep, but kill the script after a certain time period
+    std::thread aborter([this, &condition, &lock]() {
+
+        // we wait until some point in the future, in case we timeout we terminate execution
+        if (condition.wait_until(lock, std::chrono::system_clock::now() + std::chrono::seconds(5)) == std::cv_status::timeout)
+            _context->GetIsolate()->TerminateExecution();
+
+    });
+
     // execute the script
     v8::Local<v8::Value>    result(script->Run());
 
     // did we catch an exception?
     if (catcher.HasCaught())
     {
+        // join our aborting thread
+        aborter.join();
+
+        // if we have terminated we just throw a fixed error message as the catcher.Message()
+        // method won't return anything useful (in fact it'll return nothing meaning we just segfault)
+        if (catcher.HasTerminated()) throw Php::Exception("Execution timed out");
+
         // retrieve the message describing the problem
         v8::Local<v8::Message>  message(catcher.Message());
         v8::Local<v8::String>   description(message->Get());
@@ -115,6 +143,15 @@ Php::Value Context::evaluate(Php::Parameters &params)
 
         // pass this exception on to PHP userspace
         throw Php::Exception(std::string(*string, string.length()));
+    }
+    else
+    {
+        // unlock our lock and notify our aborting thread
+        lock.unlock();
+        condition.notify_one();
+
+        // join our aborter thread
+        aborter.join();
     }
 
     // return the result
