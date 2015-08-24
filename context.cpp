@@ -116,10 +116,10 @@ Php::Value Context::evaluate(Php::Parameters &params)
     std::unique_lock<std::mutex> lock(done);
 
     // create a temporary thread which will mostly just sleep, but kill the script after a certain time period
-    std::unique_ptr<std::thread> aborter;
+    std::thread aborter;
 
     // only create this thread if our timeout is higher than 0
-    if (timeout > 0) aborter.reset(new std::thread([this, &condition, &lock]() {
+    if (timeout > 0) aborter = std::move(std::thread([this, &condition, &lock]() {
 
         // we wait until some point in the future, in case we timeout we terminate execution
         if (condition.wait_until(lock, std::chrono::system_clock::now() + std::chrono::seconds(5)) == std::cv_status::timeout)
@@ -134,7 +134,7 @@ Php::Value Context::evaluate(Php::Parameters &params)
     if (catcher.HasCaught())
     {
         // join our aborting thread
-        if (aborter) aborter->join();
+        if (aborter.joinable()) aborter.join();
 
         // if we have terminated we just throw a fixed error message as the catcher.Message()
         // method won't return anything useful (in fact it'll return nothing meaning we just segfault)
@@ -157,7 +157,7 @@ Php::Value Context::evaluate(Php::Parameters &params)
         condition.notify_one();
 
         // join our aborter thread
-        if (aborter) aborter->join();
+        if (aborter.joinable()) aborter.join();
     }
 
     // return the result
