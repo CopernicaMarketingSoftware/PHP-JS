@@ -119,10 +119,10 @@ Php::Value Context::evaluate(Php::Parameters &params)
     std::thread aborter;
 
     // only create this thread if our timeout is higher than 0
-    if (timeout > 0) aborter = std::move(std::thread([this, &condition, &lock]() {
+    if (timeout > 0) aborter = std::move(std::thread([this, &condition, &lock, timeout]() {
 
         // we wait until some point in the future, in case we timeout we terminate execution
-        if (condition.wait_until(lock, std::chrono::system_clock::now() + std::chrono::seconds(5)) == std::cv_status::timeout)
+        if (condition.wait_until(lock, std::chrono::system_clock::now() + std::chrono::seconds(timeout)) == std::cv_status::timeout)
             _context->GetIsolate()->TerminateExecution();
 
     }));
