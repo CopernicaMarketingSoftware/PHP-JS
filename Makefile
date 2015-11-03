@@ -85,7 +85,7 @@ LINKER				=	c++
 #	with a list of all flags that should be passed to the linker.
 #
 
-COMPILER_FLAGS		=	-Wall -c -O2 -std=c++11 -fpic -DVERSION="`./version.sh`" -I. -g
+COMPILER_FLAGS		=	-Wall -c -O2 -MD -std=c++11 -fpic -DVERSION="`./version.sh`" -I. -g
 LINKER_FLAGS		=	-shared
 LINKER_DEPENDENCIES	=	-lphpcpp -lv8
 
@@ -112,6 +112,7 @@ MKDIR				=	mkdir -p
 
 SOURCES				=	$(wildcard *.cpp)
 OBJECTS				=	$(SOURCES:%.cpp=%.o)
+DEPENDENCIES		=	$(SOURCES:%.cpp=%.d)
 
 
 #
@@ -119,6 +120,11 @@ OBJECTS				=	$(SOURCES:%.cpp=%.o)
 #
 
 all:					${OBJECTS} ${EXTENSION}
+
+#
+#   Use dependency tracking
+#
+-include ${DEPENDENCIES}
 
 ${EXTENSION}:			${OBJECTS}
 						${LINKER} ${LINKER_FLAGS} -o $@ ${OBJECTS} ${LINKER_DEPENDENCIES}

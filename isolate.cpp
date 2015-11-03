@@ -99,8 +99,8 @@ public:
  */
 v8::Isolate* isolate()
 {
-    // the one and only isolate
-    static Isolate isolate;
+    // the one and only isolate in this thread
+    static thread_local Isolate isolate;
 
     // cast it to the right type
     return isolate;
