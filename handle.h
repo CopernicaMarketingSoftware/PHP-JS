@@ -84,7 +84,7 @@ private:
         void initialize(const v8::Local<v8::External> &handle)
         {
             // create the persistent handle and make it weak
-            _persistent.Reset(isolate(), handle);
+            _persistent.Reset(Isolate::get(), handle);
             _persistent.SetWeak<Object>(this, &destructor);
         }
 
@@ -139,7 +139,7 @@ public:
         auto *copy= new Object(std::move(object));
 
         // create the v8 handle around it
-        _handle = v8::External::New(isolate(), copy->get());
+        _handle = v8::External::New(Isolate::get(), copy->get());
 
         // initialize the persistent handle
         copy->initialize(_handle);

@@ -69,16 +69,31 @@ private:
      *  by the worker thread to keep going
      */
     void run();
-public:
+
     /**
-     *  Constructor
+     *  Private constructor, only one platform
+     *  may be created, use the create() method
      */
     Platform();
-
+public:
     /**
      *  Destructor
      */
     virtual ~Platform();
+
+    /**
+     *  Create a new platform if one does not exist yet.
+     *
+     *  This function is thread-safe.
+     */
+    static void create();
+
+    /**
+     *  Shutdown the platform
+     *
+     *  This function is thread-safe.
+     */
+    static void shutdown();
 
     /**
      *  Schedule a task to be executed on a background thread.

@@ -59,7 +59,7 @@ public:
      *  @param  value   the value to hold on to
      */
     Stack(v8::Handle<T> value) :
-        _handle(isolate(), value)
+        _handle(Isolate::get(), value)
     {}
 
     /**
@@ -68,7 +68,7 @@ public:
      *  @param  that    stack instance to copy
      */
     Stack(const Stack &that) :
-        _handle(isolate(), (v8::Local<T>)that)
+        _handle(Isolate::get(), (v8::Local<T>)that)
     {}
 
     /**
@@ -79,7 +79,7 @@ public:
     Stack &operator=(v8::Handle<T> value)
     {
         // store the new handle and value
-        _handle.Reset(isolate(), value);
+        _handle.Reset(Isolate::get(), value);
 
         // allow chaining
         return *this;
@@ -94,7 +94,7 @@ public:
     operator v8::Local<T> () const
     {
         // create the value
-        return v8::Local<T>::New(isolate(), _handle);
+        return v8::Local<T>::New(Isolate::get(), _handle);
     }
 
     /**

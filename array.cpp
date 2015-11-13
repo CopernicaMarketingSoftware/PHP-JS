@@ -59,11 +59,11 @@ static uint32_t count(const Php::Array &array)
 static void enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     Handle<Php::Array>      handle(info.Data());
 
     // create a new array to store all the properties
-    v8::Local<v8::Array>    properties(v8::Array::New(isolate()));
+    v8::Local<v8::Array>    properties(v8::Array::New(Isolate::get()));
 
     // there is no 'push' method on v8::Array, so we simply have
     // to 'Set' the property with the correct index, declared here
@@ -89,7 +89,7 @@ static void enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
 static void getter(uint32_t index, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     Handle<Php::Array>      handle(info.Data());
 
     // check if we have an item at the requested offset
@@ -114,7 +114,7 @@ static void getter(uint32_t index, const v8::PropertyCallbackInfo<v8::Value> &in
 static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
     // create a local handle, so properties "fall out of scope"
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
 
     // retrieve handle to the original object and the property name
     Handle<Php::Array>      handle(info.Data());

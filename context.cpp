@@ -31,10 +31,10 @@ Context::Context()
 {
     // temporary handle, necessary to store the values before the are put in the unique persistent handle
     // note, since we want this variable to fall out of scope, we cannot use member initialization
-    v8::HandleScope scope(isolate());
+    v8::HandleScope scope(Isolate::get());
 
     // now create the context
-    _context = v8::Context::New(isolate(), nullptr);
+    _context = v8::Context::New(Isolate::get(), nullptr);
 }
 
 
@@ -58,7 +58,7 @@ Context::Context()
 void Context::assign(Php::Parameters &params)
 {
     // create a local "scope" and "enter" our context
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     v8::Context::Scope      contextScope(_context);
 
     // retrieve the global object from the context
@@ -96,7 +96,7 @@ Php::Value Context::evaluate(Php::Parameters &params)
     int timeout = (params.size() >= 2 ? params[1].numericValue() : 0);
 
     // create a handle, so that all variables fall "out of scope"
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
 
     // enter the compilation/execution scope
     v8::Context::Scope      contextScope(_context);
@@ -105,7 +105,7 @@ Php::Value Context::evaluate(Php::Parameters &params)
     v8::TryCatch            catcher;
 
     // compile the code into a script
-    v8::Local<v8::String>   source(v8::String::NewFromUtf8(isolate(), params[0]));
+    v8::Local<v8::String>   source(v8::String::NewFromUtf8(Isolate::get(), params[0]));
     v8::Local<v8::Script>   script(v8::Script::Compile(source));
 
     // we create a simple mutex, condition_variable and a lock so we can use wait_until on

@@ -29,7 +29,7 @@ JSObject::Iterator::Iterator(Php::Base *base, const Stack<v8::Object> &object) :
     _position(0)
 {
     // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     v8::Context::Scope      context(object->CreationContext());
 
     // assign variables, this would normally be done inside
@@ -59,7 +59,7 @@ bool JSObject::Iterator::valid()
 Php::Value JSObject::Iterator::current()
 {
     // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     v8::Context::Scope      context(_object->CreationContext());
 
     // retrieve the current key, the value and convert it
@@ -74,7 +74,7 @@ Php::Value JSObject::Iterator::current()
 Php::Value JSObject::Iterator::key()
 {
     // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     v8::Context::Scope      context(_object->CreationContext());
 
     // retrieve the current key and convert it
@@ -117,7 +117,7 @@ JSObject::JSObject(v8::Handle<v8::Object> object) :
 Php::Value JSObject::__get(const Php::Value &name) const
 {
     // create a handle scope, so variables "fall out of scope", "enter" the context and retrieve the property
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     v8::Context::Scope      context(_object->CreationContext());
     v8::Local<v8::Value>    property(_object->Get(value(name)));
 
@@ -137,7 +137,7 @@ Php::Value JSObject::__get(const Php::Value &name) const
 void JSObject::__set(const Php::Value &name, const Php::Value &property)
 {
     // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     v8::Context::Scope      context(_object->CreationContext());
 
     // convert the value to a ecmascript value and store it
@@ -153,7 +153,7 @@ void JSObject::__set(const Php::Value &name, const Php::Value &property)
 bool JSObject::__isset(const Php::Value &name)
 {
     // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     v8::Context::Scope      context(_object->CreationContext());
 
     // check if the object has the requested property
@@ -170,7 +170,7 @@ bool JSObject::__isset(const Php::Value &name)
 Php::Value JSObject::__call(const char *name, Php::Parameters &params)
 {
     // create a handle scope, so variables "fall out of scope", "enter" the context and retrieve the value
-    v8::HandleScope                     scope(isolate());
+    v8::HandleScope                     scope(Isolate::get());
     v8::Context::Scope                  context(_object->CreationContext());
     v8::Local<v8::Function>             function(_object->Get(value(name)).As<v8::Function>());
     std::vector<v8::Local<v8::Value>>   input;
@@ -196,7 +196,7 @@ Php::Value JSObject::__call(const char *name, Php::Parameters &params)
 Php::Value JSObject::__toString()
 {
     // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     v8::Context::Scope      context(_object->CreationContext());
 
     // convert to string and then to php

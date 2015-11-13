@@ -11,13 +11,28 @@
 /**
  *  Dependencies
  */
+#include <v8.h>
 #include "platform.h"
+#include <atomic>
 #include <time.h>
+#include <mutex>
 
 /**
  *  Start namespace
  */
 namespace JS {
+
+/**
+ *  Mutex for safely creating the platform
+ *  @var    std::mutex
+ */
+static std::mutex mutex;
+
+/**
+ *  The platform instance
+ *  @var    std::atomic<Platform*>
+ */
+static std::atomic<Platform*> platform;
 
 /**
  *  Constructor
@@ -40,6 +55,103 @@ Platform::~Platform()
 
     // and wait for the thread to stop
     _worker.join();
+}
+
+/**
+ *  Create a new platform if one does not exist yet.
+ *
+ *  This function is thread-safe.
+ */
+void Platform::create()
+{
+    // retrieve the current platform
+    auto *result = platform.load(std::memory_order_relaxed);
+
+    // create a memory fence for reading the variable
+    std::atomic_thread_fence(std::memory_order_acquire);
+
+    // is the platform initialized yet?
+    if (result == nullptr)
+    {
+        // lock the platform
+        std::lock_guard<std::mutex> lock(mutex);
+
+        // check again whether the variable was initialized
+        result = platform.load(std::memory_order_relaxed);
+
+        // still not set, we need to create it now
+        if (result == nullptr)
+        {
+            // create the platform
+            result = new Platform;
+
+            // initialize the ICU and v8 engine
+            v8::V8::InitializeICU();
+            v8::V8::InitializePlatform(result);
+            v8::V8::Initialize();
+
+            // create a memory fence for storing the variable
+            std::atomic_thread_fence(std::memory_order_release);
+
+            // store the new platform
+            platform.store(result, std::memory_order_relaxed);
+        }
+    }
+}
+
+/**
+ *  Shutdown the platform
+ *
+ *  This function is thread-safe.
+ */
+void Platform::shutdown()
+{
+    /**
+     *  You might wonder why we take care of neatly storing
+     *  the nullptr in the platform as we are only calling
+     *  this method from the destructor of the complete PHP
+     *  engine and you would not expect to receive any more
+     *  calls to come into the get() method.
+     *
+     *  When we are used from within apache2, a reload causes
+     *  all PHP engines to be destructed, but we actually do
+     *  stay loaded in memory. So we have to make sure that
+     *  this variable is correctly set to a nullptr, so that
+     *  the get() method creates a new instance.
+     */
+
+    // retrieve the current platform
+    auto *result = platform.load(std::memory_order_relaxed);
+
+    // create a memory fence for reading the variable
+    std::atomic_thread_fence(std::memory_order_acquire);
+
+    // is the platform initialized yet?
+    if (result != nullptr)
+    {
+        // lock the platform
+        std::lock_guard<std::mutex> lock(mutex);
+
+        // check again whether the variable was initialized
+        result = platform.load(std::memory_order_relaxed);
+
+        // still not set, we need to create it now
+        if (result != nullptr)
+        {
+            // create the platform
+            delete result;
+
+            // and shut down the engine (this also takes care of the ICU) and the platform
+            v8::V8::Dispose();
+            v8::V8::ShutdownPlatform();
+
+            // create a memory fence for storing the variable
+            std::atomic_thread_fence(std::memory_order_release);
+
+            // store the new platform
+            platform.store(nullptr, std::memory_order_relaxed);
+        }
+    }
 }
 
 /**

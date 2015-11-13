@@ -17,8 +17,8 @@
 /**
  *  Dependencies
  */
-#include "isolate.h"
 #include "platform.h"
+#include "isolate.h"
 #include <cstring>
 #include <cstdlib>
 
@@ -28,82 +28,70 @@
 namespace JS {
 
 /**
- *  Private class
+ *  The isolate instance for this thread
+ *  @var    std::unique_ptr<Isolate>
  */
-class Isolate final
-{
-private:
-    /**
-     *  The "platform" we run on
-     *  @var    Platform
-     */
-    Platform _platform;
-
-    /**
-     *  The underlying isolate
-     *  @var    v8::Isolate*
-     */
-    v8::Isolate *_isolate;
-public:
-    /**
-     *  Constructor
-     */
-    Isolate()
-    {
-        // initialize the ICU and v8 engine
-        v8::V8::InitializeICU();
-        v8::V8::InitializePlatform(&_platform);
-        v8::V8::Initialize();
-
-        // create the actual isolate
-        _isolate = v8::Isolate::New();
-
-        // and enter it
-        _isolate->Enter();
-    }
-
-    /**
-     *  Destructor
-     */
-    ~Isolate()
-    {
-        // leave the isolate scope
-        _isolate->Exit();
-
-        // clean it up
-        _isolate->Dispose();
-
-        // and shut down the engine (this also takes care of the ICU)
-        v8::V8::Dispose();
-
-        // finally shut down the platform
-        v8::V8::ShutdownPlatform();
-    }
-
-    /**
-     *  Cast to the underlying isolate
-     *
-     *  @return v8::Isolate*
-     */
-    operator v8::Isolate* () const
-    {
-        // return member
-        return _isolate;
-    }
-};
+static thread_local std::unique_ptr<Isolate> isolate;
 
 /**
- *  Retrieve the isolate
+ *  Constructor
+ */
+Isolate::Isolate()
+{
+    // create a platform
+    Platform::create();
+
+    // create the actual isolate
+    _isolate = v8::Isolate::New();
+
+    // and enter it
+    _isolate->Enter();
+}
+
+/**
+ *  Destructor
+ */
+Isolate::~Isolate()
+{
+    // leave the isolate scope
+    _isolate->Exit();
+
+    // clean it up
+    _isolate->Dispose();
+}
+
+/**
+ *  Get the isolate for this thread
+ *
+ *  @return The thread-local isolate instance
+ */
+v8::Isolate *Isolate::get()
+{
+    // do we still have to create the isolate?
+    if (!isolate) isolate.reset(new Isolate);
+
+    // return the isolate
+    return *isolate;
+}
+
+/**
+ *  Clean up the isolate - if any - for this thread
+ */
+void Isolate::destroy()
+{
+    // remove the isolate
+    isolate.reset();
+}
+
+/**
+ *  Cast to the underlying isolate
  *
  *  @return v8::Isolate*
  */
-v8::Isolate* isolate()
+Isolate::operator v8::Isolate* () const
 {
-    // the one and only isolate in this thread
-    static thread_local Isolate isolate;
-
-    // cast it to the right type
-    return isolate;
+    // return member
+    return _isolate;
 }
 
 /**

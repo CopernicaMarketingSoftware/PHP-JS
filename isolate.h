@@ -30,11 +30,46 @@
 namespace JS {
 
 /**
- *  Retrieve the isolate
- *
- *  @return v8::Isolate*
+ *  Private class
  */
-v8::Isolate* isolate();
+class Isolate final
+{
+private:
+    /**
+     *  The underlying isolate
+     *  @var    v8::Isolate*
+     */
+    v8::Isolate *_isolate;
+public:
+    /**
+     *  Constructor
+     */
+    Isolate();
+
+    /**
+     *  Destructor
+     */
+    ~Isolate();
+
+    /**
+     *  Get the isolate for this thread
+     *
+     *  @return The thread-local isolate instance
+     */
+    static v8::Isolate *get();
+
+    /**
+     *  Clean up the isolate - if any - for this thread
+     */
+    static void destroy();
+
+    /**
+     *  Cast to the underlying isolate
+     *
+     *  @return v8::Isolate*
+     */
+    operator v8::Isolate* () const;
+};
 
 /**
  *  End namespace

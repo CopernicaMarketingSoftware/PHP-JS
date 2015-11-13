@@ -31,7 +31,7 @@ namespace JS {
 static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
 {
     // create a local handle, so properties "fall out of scope"
-    v8::HandleScope     scope(isolate());
+    v8::HandleScope     scope(Isolate::get());
 
     // retrieve handle to the original object
     Handle<Php::Value>  handle(info.Data());
@@ -54,7 +54,7 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
     catch (const Php::Exception& exception)
     {
         // pass the exception on to javascript userspace
-        isolate()->ThrowException(v8::Exception::Error(v8::String::NewFromUtf8(isolate(), exception.what())));
+        Isolate::get()->ThrowException(v8::Exception::Error(v8::String::NewFromUtf8(Isolate::get(), exception.what())));
     }
 }
 
@@ -67,7 +67,7 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
 v8::Handle<v8::Value> value(const Php::Value &input)
 {
     // create a handle that we can return a value from
-    v8::EscapableHandleScope    scope(isolate());
+    v8::EscapableHandleScope    scope(Isolate::get());
 
     // the result value we are assigning
     v8::Local<v8::Value>        result;
@@ -83,14 +83,14 @@ v8::Handle<v8::Value> value(const Php::Value &input)
         // the value can be of many types
         switch (input.type())
         {
-            case Php::Type::Null:       /* don't set anything, let it be empty */                                                           break;
-            case Php::Type::Numeric:    result = v8::Integer::New(isolate(), input);                                                        break;
-            case Php::Type::Float:      result = v8::Number::New(isolate(), input);                                                         break;
-            case Php::Type::Bool:       result = v8::Boolean::New(isolate(), input);                                                        break;
-            case Php::Type::String:     result = v8::String::NewFromUtf8(isolate(), input);                                                 break;
-            case Php::Type::Object:     result = Object(input);                                                                             break;
-            case Php::Type::Callable:   result = v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(input))->GetFunction();  break;
-            case Php::Type::Array:      result = Array(input);                                                                              break;
+            case Php::Type::Null:       /* don't set anything, let it be empty */                                                               break;
+            case Php::Type::Numeric:    result = v8::Integer::New(Isolate::get(), input);                                                       break;
+            case Php::Type::Float:      result = v8::Number::New(Isolate::get(), input);                                                        break;
+            case Php::Type::Bool:       result = v8::Boolean::New(Isolate::get(), input);                                                       break;
+            case Php::Type::String:     result = v8::String::NewFromUtf8(Isolate::get(), input);                                                break;
+            case Php::Type::Object:     result = Object(input);                                                                                 break;
+            case Php::Type::Callable:   result = v8::FunctionTemplate::New(Isolate::get(), callback, Handle<Php::Value>(input))->GetFunction(); break;
+            case Php::Type::Array:      result = Array(input);                                                                                  break;
             default:
                 break;
         }
@@ -144,7 +144,7 @@ Php::Value value(v8::Handle<v8::Value> input)
         // the result to return
         Php::Function result([function](Php::Parameters &params) {
             // create a "scope", so variables get destructed, retrieve the context and "enter" it
-            v8::HandleScope                     scope(isolate());
+            v8::HandleScope                     scope(Isolate::get());
             v8::Local<v8::Context>              context((*function)->CreationContext());
             v8::Context::Scope                  contextScope(context);
 

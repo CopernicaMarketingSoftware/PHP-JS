@@ -60,7 +60,7 @@ static uint32_t count(const Php::Object &object)
 static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve a handle to the original object
-    v8::HandleScope     scope(isolate());
+    v8::HandleScope     scope(Isolate::get());
     Handle<Php::Object> handle(info.Data());
 
     // an array to hold all the arguments
@@ -81,7 +81,7 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
     catch (const Php::Exception& exception)
     {
         // pass the exception on to javascript userspace
-        isolate()->ThrowException(v8::Exception::Error(v8::String::NewFromUtf8(isolate(), exception.what())));
+        Isolate::get()->ThrowException(v8::Exception::Error(v8::String::NewFromUtf8(Isolate::get(), exception.what())));
     }
 }
 
@@ -93,11 +93,11 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
 static void indexed_enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
 
     // create a new array to store all the properties
-    v8::Local<v8::Array>    properties(v8::Array::New(isolate()));
+    v8::Local<v8::Array>    properties(v8::Array::New(Isolate::get()));
 
     // there is no 'push' method on v8::Array, so we simply have
     // to 'Set' the property with the correct index, declared here
@@ -125,11 +125,11 @@ static void indexed_enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
 static void named_enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
 
     // create a new array to store all the properties
-    v8::Local<v8::Array>    properties(v8::Array::New(isolate()));
+    v8::Local<v8::Array>    properties(v8::Array::New(Isolate::get()));
 
     // there is no 'push' method on v8::Array, so we simply have
     // to 'Set' the property with the correct index, declared here
@@ -158,7 +158,7 @@ static void named_enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
 static void getter(uint32_t index, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
 
     // check if we have an item at the requested offset
@@ -183,7 +183,7 @@ static void getter(uint32_t index, const v8::PropertyCallbackInfo<v8::Value> &in
 static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
     // create a local handle, so properties "fall out of scope"
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
 
     // retrieve handle to the original object and the property name
     Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
@@ -240,7 +240,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
         Php::Array callable({ *handle, Php::Value{ "__toString", 10 } });
 
         // create the function to be called
-        info.GetReturnValue().Set(v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
+        info.GetReturnValue().Set(v8::FunctionTemplate::New(Isolate::get(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
     }
     else if (is_callable)
     {
@@ -248,7 +248,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
         Php::Array callable({ *handle, Php::Value{ *name, name.length() } });
 
         // create the function to be called
-        info.GetReturnValue().Set(v8::FunctionTemplate::New(isolate(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
+        info.GetReturnValue().Set(v8::FunctionTemplate::New(Isolate::get(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
     }
     else
     {
@@ -267,7 +267,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
 static void setter(uint32_t index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
 
     // store the property inside the object
@@ -284,7 +284,7 @@ static void setter(uint32_t index, v8::Local<v8::Value> input, const v8::Propert
 static void setter(v8::Local<v8::String> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
-    v8::HandleScope         scope(isolate());
+    v8::HandleScope         scope(Isolate::get());
     Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
     v8::String::Utf8Value   name(property);
 

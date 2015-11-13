@@ -12,6 +12,9 @@
 #include <phpcpp.h>
 #include "context.h"
 #include "jsobject.h"
+#include "isolate.h"
+#include "platform.h"
+#include <iostream>
 
 /**
  *  The VERSION macro is going to be used as string with surrounded quotes
@@ -66,6 +69,12 @@ extern "C" {
         // add the classes to the extension
         extension.add(std::move(context));
         extension.add(std::move(object));
+
+        // the isolate gets cleaned up at the end of each pageview
+        extension.onIdle(JS::Isolate::destroy);
+
+        // the platform needs to be cleaned up on engine shutdown
+        extension.onShutdown(JS::Platform::shutdown);
 
         // return the extension
         return extension;
