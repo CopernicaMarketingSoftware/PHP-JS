@@ -10,6 +10,7 @@
 /**
  *  Dependencies
  */
+#include "external.h"
 #include "context.h"
 #include "isolate.h"
 #include "value.h"
@@ -35,8 +36,58 @@ Context::Context()
 
     // now create the context
     _context = v8::Context::New(Isolate::get(), nullptr);
+
+    // store a link to ourselves
+    _context->SetAlignedPointerInEmbedderData(1, this);
 }
 
+/**
+ *  Destructor
+ */
+Context::~Context()
+{
+    // destroy all externals
+    for (auto *external : _externals) delete external;
+}
+
+/**
+ *  Retrieve the currently active context
+ *
+ *  @return The current context, or a nullptr
+ */
+Context *Context::current()
+{
+    // retrieve the current context
+    auto context = Isolate::get()->GetEnteredContext();
+
+    // if no context is available we are out of options
+    if (context.IsEmpty()) return nullptr;
+
+    // retrieve the context from the handle
+    return reinterpret_cast<Context*>(context->GetAlignedPointerFromEmbedderData(1));
+}
+
+/**
+ *  Track a new external object
+ *
+ *  @var    External*
+ */
+void Context::track(External *external)
+{
+    // add to the list of tracked references
+    _externals.insert(external);
+}
+
+/**
+ *  Unregister an external object
+ *
+ *  @var    external    The external object we no longer to track
+ */
+void Context::untrack(External *external)
+{
+    // remove from the list of tracked references
+    _externals.erase(external);
+}
 
 /**
  *  Assign a variable to the javascript context

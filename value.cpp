@@ -34,7 +34,7 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
     v8::HandleScope     scope(Isolate::get());
 
     // retrieve handle to the original object
-    Handle<Php::Value>  handle(info.Data());
+    Handle              handle(info.Data());
 
     // an array to hold all the arguments
     Php::Array arguments;
@@ -83,14 +83,14 @@ v8::Handle<v8::Value> value(const Php::Value &input)
         // the value can be of many types
         switch (input.type())
         {
-            case Php::Type::Null:       /* don't set anything, let it be empty */                                                               break;
-            case Php::Type::Numeric:    result = v8::Integer::New(Isolate::get(), input);                                                       break;
-            case Php::Type::Float:      result = v8::Number::New(Isolate::get(), input);                                                        break;
-            case Php::Type::Bool:       result = v8::Boolean::New(Isolate::get(), input);                                                       break;
-            case Php::Type::String:     result = v8::String::NewFromUtf8(Isolate::get(), input);                                                break;
-            case Php::Type::Object:     result = Object(input);                                                                                 break;
-            case Php::Type::Callable:   result = v8::FunctionTemplate::New(Isolate::get(), callback, Handle<Php::Value>(input))->GetFunction(); break;
-            case Php::Type::Array:      result = Array(input);                                                                                  break;
+            case Php::Type::Null:       /* don't set anything, let it be empty */                                                   break;
+            case Php::Type::Numeric:    result = v8::Integer::New(Isolate::get(), input);                                           break;
+            case Php::Type::Float:      result = v8::Number::New(Isolate::get(), input);                                            break;
+            case Php::Type::Bool:       result = v8::Boolean::New(Isolate::get(), input);                                           break;
+            case Php::Type::String:     result = v8::String::NewFromUtf8(Isolate::get(), input);                                    break;
+            case Php::Type::Object:     result = Object(input);                                                                     break;
+            case Php::Type::Callable:   result = v8::FunctionTemplate::New(Isolate::get(), callback, Handle(input))->GetFunction(); break;
+            case Php::Type::Array:      result = Array(input);                                                                      break;
             default:
                 break;
         }
@@ -201,7 +201,7 @@ Php::Value value(v8::Handle<v8::Value> input)
             {
                 // the PHP value is stored in the first internal field,
                 // retrieve it and create the handle around it
-                Handle<Php::Object> handle(field);
+                Handle handle(field);
 
                 // dereference and return it
                 return *handle;

@@ -19,7 +19,9 @@
  */
 #include <v8.h>
 #include <utility>
+#include <phpcpp.h>
 #include "isolate.h"
+#include "external.h"
 
 /**
  *  Start namespace
@@ -29,76 +31,9 @@ namespace JS {
 /**
  *  Handle class
  */
-template <class T>
 class Handle
 {
 private:
-    /**
-     *  Nested class holding both the object
-     *  and the persistent handle to it
-     */
-    class Object
-    {
-    private:
-        /**
-         *  The allocated object
-         *  @var    T
-         */
-        T _object;
-
-        /**
-         *  The persistent handle
-         *  @var    v8::Persistent<v8::Value>
-         */
-        v8::Persistent<v8::Value> _persistent;
-    public:
-        /**
-         *  Constructor
-         *
-         *  @param  object  The object to keep in memory
-         */
-        Object(T &&object) :
-            _object(std::move(object))
-            // persistent will be initialized later
-        {}
-
-        /**
-         *  Destructor
-         */
-        ~Object()
-        {
-            /**
-             *  Reset the persistent handle
-             *
-             *  One would assume the fact that the persistent is destructed
-             *  would be enough indication to v8 that the handle is now garbage,
-             *  but alas, if we don't call this v8 will trip over and assume
-             *  that the object is still alive and then complain about it.
-             */
-            _persistent.Reset();
-        }
-
-        /**
-         *  Initialize the persistent handle
-         */
-        void initialize(const v8::Local<v8::External> &handle)
-        {
-            // create the persistent handle and make it weak
-            _persistent.Reset(Isolate::get(), handle);
-            _persistent.SetWeak<Object>(this, &destructor);
-        }
-
-        /**
-         *  Get pointer to the underlying object
-         *
-         *  @return T*
-         */
-        T *get()
-        {
-            // return the pointer
-            return &_object;
-        }
-    };
 
     /**
      *  The v8 handle to the object
@@ -111,7 +46,7 @@ private:
      *
      *  @param  data    callback data
      */
-    static void destructor(const v8::WeakCallbackData<v8::Value, Object> &data)
+    static void destructor(const v8::WeakCallbackData<v8::Value, External> &data)
     {
         // delete the object
         delete data.GetParameter();
@@ -122,7 +57,7 @@ public:
      *
      *  @param  object  the object to handle
      */
-    Handle(T object)
+    Handle(Php::Value object)
     {
         /**
          *  Create a copy of the object and a persistent
@@ -136,7 +71,7 @@ public:
          *  v8 itself. Yes, it realises it made a mistake
          *  and rewards us by crashing.
          */
-        auto *copy= new Object(std::move(object));
+        auto *copy= new External(std::move(object));
 
         // create the v8 handle around it
         _handle = v8::External::New(Isolate::get(), copy->get());
@@ -172,20 +107,20 @@ public:
      *  Return a pointer to the managed object, so that
      *  methods and properties can be easily retrieved.
      *
-     *  @return T*
+     *  @return The managed value
      */
-    T *operator->()
+    Php::Value *operator->()
     {
         // retrieve the handled value and cast it
-        return static_cast<T*>(_handle->Value());
+        return static_cast<Php::Value*>(_handle->Value());
     }
 
     /**
      *  Cast the object to to the original object
      *
-     *  @return T
+     *  @return The original Php::Value
      */
-    T &operator*()
+    Php::Value &operator*()
     {
         // retrieve the handled value and cast it
         return *(operator->());
@@ -194,9 +129,9 @@ public:
     /**
      *  Cast the object to to the original object
      *
-     *  @return T
+     *  @return The Php::Value we are handling
      */
-    operator T &()
+    operator Php::Value &()
     {
         // retrieve the handled value and cast it
         return *(operator->());

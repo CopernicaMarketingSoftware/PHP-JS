@@ -28,7 +28,7 @@ namespace JS {
  *  @param  object  The object to count
  *  @return the number of numeric, sequential keys
  */
-static uint32_t count(const Php::Object &object)
+static uint32_t findMax(const Php::Value &object)
 {
     // the variable to store count
     int64_t result = 0;
@@ -61,7 +61,7 @@ static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve a handle to the original object
     v8::HandleScope     scope(Isolate::get());
-    Handle<Php::Object> handle(info.Data());
+    Handle              handle(info.Data());
 
     // an array to hold all the arguments
     Php::Array arguments;
@@ -94,7 +94,7 @@ static void indexed_enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
     v8::HandleScope         scope(Isolate::get());
-    Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
+    Handle                  handle(info.Holder()->GetInternalField(0));
 
     // create a new array to store all the properties
     v8::Local<v8::Array>    properties(v8::Array::New(Isolate::get()));
@@ -126,7 +126,7 @@ static void named_enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
     v8::HandleScope         scope(Isolate::get());
-    Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
+    Handle                  handle(info.Holder()->GetInternalField(0));
 
     // create a new array to store all the properties
     v8::Local<v8::Array>    properties(v8::Array::New(Isolate::get()));
@@ -159,7 +159,7 @@ static void getter(uint32_t index, const v8::PropertyCallbackInfo<v8::Value> &in
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
     v8::HandleScope         scope(Isolate::get());
-    Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
+    Handle                  handle(info.Holder()->GetInternalField(0));
 
     // check if we have an item at the requested offset
     if (handle->call("offsetExists", static_cast<int64_t>(index)))
@@ -186,7 +186,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     v8::HandleScope         scope(Isolate::get());
 
     // retrieve handle to the original object and the property name
-    Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
+    Handle                  handle(info.Holder()->GetInternalField(0));
     v8::String::Utf8Value   name(property);
 
     /**
@@ -227,7 +227,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     else if (std::strcmp(*name, "length") == 0 && handle->instanceOf("Countable"))
     {
         // return the count from this object
-        info.GetReturnValue().Set(count(*handle));
+        info.GetReturnValue().Set(findMax(*handle));
     }
     else if (handle->instanceOf("ArrayAccess") && handle->call("offsetExists", *name))
     {
@@ -240,7 +240,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
         Php::Array callable({ *handle, Php::Value{ "__toString", 10 } });
 
         // create the function to be called
-        info.GetReturnValue().Set(v8::FunctionTemplate::New(Isolate::get(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
+        info.GetReturnValue().Set(v8::FunctionTemplate::New(Isolate::get(), callback, Handle(std::move(callable)))->GetFunction());
     }
     else if (is_callable)
     {
@@ -248,7 +248,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
         Php::Array callable({ *handle, Php::Value{ *name, name.length() } });
 
         // create the function to be called
-        info.GetReturnValue().Set(v8::FunctionTemplate::New(Isolate::get(), callback, Handle<Php::Value>(std::move(callable)))->GetFunction());
+        info.GetReturnValue().Set(v8::FunctionTemplate::New(Isolate::get(), callback, Handle(std::move(callable)))->GetFunction());
     }
     else
     {
@@ -268,7 +268,7 @@ static void setter(uint32_t index, v8::Local<v8::Value> input, const v8::Propert
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
     v8::HandleScope         scope(Isolate::get());
-    Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
+    Handle                  handle(info.Holder()->GetInternalField(0));
 
     // store the property inside the object
     handle->call("offsetSet", static_cast<int64_t>(index), value(input));
@@ -285,7 +285,7 @@ static void setter(v8::Local<v8::String> property, v8::Local<v8::Value> input, c
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
     v8::HandleScope         scope(Isolate::get());
-    Handle<Php::Object>     handle(info.Holder()->GetInternalField(0));
+    Handle                  handle(info.Holder()->GetInternalField(0));
     v8::String::Utf8Value   name(property);
 
     // if the object is not implementing ArrayAccess or has the given property as a member
@@ -317,7 +317,7 @@ Object::Object(Php::Object object) :
     _template->SetInternalFieldCount(1);
 
     // if the object can be invoked as a function, we register the callback
-    if (object.isCallable()) _template->SetCallAsFunctionHandler(callback, Handle<Php::Value>(object));
+    if (object.isCallable()) _template->SetCallAsFunctionHandler(callback, Handle(object));
 
     // register the property handlers
     _template->SetNamedPropertyHandler(getter, setter, nullptr, nullptr, named_enumerator);
@@ -338,7 +338,7 @@ Object::operator v8::Local<v8::Value> ()
     auto instance = _template->NewInstance();
 
     // attach the object to the instance
-    instance->SetInternalField(0, Handle<Php::Value>(_object));
+    instance->SetInternalField(0, Handle(_object));
 
     // return the instance
     return instance;

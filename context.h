@@ -25,6 +25,11 @@
 namespace JS {
 
 /**
+ *  Forward declarations
+ */
+class External;
+
+/**
  *  Class definition
  */
 class Context : public Php::Base
@@ -35,6 +40,12 @@ private:
      *  @var    Stack<V8::Context>
      */
     Stack<v8::Context> _context;
+
+    /**
+     *  List of external pointers to track
+     *  @var    std::set<External>
+     */
+    std::set<External*> _externals;
 public:
     /**
      *  Constructor
@@ -54,6 +65,32 @@ public:
      *  @param  that    object to move
      */
     Context(Context&&that) = default;
+
+    /**
+     *  Destructor
+     */
+    virtual ~Context();
+
+    /**
+     *  Retrieve the currently active context
+     *
+     *  @return The current context, or a nullptr
+     */
+    static Context *current();
+
+    /**
+     *  Track a new external object
+     *
+     *  @var    External*
+     */
+    void track(External *external);
+
+    /**
+     *  Unregister an external object
+     *
+     *  @var    external    The external object we no longer to track
+     */
+    void untrack(External *external);
 
     /**
      *  Assign a variable to the javascript context

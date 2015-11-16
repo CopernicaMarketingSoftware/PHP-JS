@@ -28,7 +28,7 @@ namespace JS {
  *  @param  array   The array to count
  *  @return the number of numeric, sequential keys
  */
-static uint32_t count(const Php::Array &array)
+static uint32_t findMax(const Php::Value &array)
 {
     // the variable to store count
     int64_t result = 0;
@@ -60,7 +60,7 @@ static void enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
     v8::HandleScope         scope(Isolate::get());
-    Handle<Php::Array>      handle(info.Data());
+    Handle                  handle(info.Data());
 
     // create a new array to store all the properties
     v8::Local<v8::Array>    properties(v8::Array::New(Isolate::get()));
@@ -90,7 +90,7 @@ static void getter(uint32_t index, const v8::PropertyCallbackInfo<v8::Value> &in
 {
     // create a local handle, so properties "fall out of scope" and retrieve the original object
     v8::HandleScope         scope(Isolate::get());
-    Handle<Php::Array>      handle(info.Data());
+    Handle                  handle(info.Data());
 
     // check if we have an item at the requested offset
     if (handle->contains(index))
@@ -117,7 +117,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     v8::HandleScope         scope(Isolate::get());
 
     // retrieve handle to the original object and the property name
-    Handle<Php::Array>      handle(info.Data());
+    Handle                  handle(info.Data());
     v8::String::Utf8Value   name(property);
 
     // check if the property exists
@@ -129,7 +129,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     else if (std::strcmp(*name, "length") == 0)
     {
         // return the count from this array
-        info.GetReturnValue().Set(count(*handle));
+        info.GetReturnValue().Set(findMax(*handle));
     }
     else
     {
@@ -148,7 +148,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
 static void setter(uint32_t index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
     // retrieve handle to the original object
-    Handle<Php::Array>  handle(info.Data());
+    Handle  handle(info.Data());
 
     // store the property inside the array
     handle->set(index, value(input));
@@ -164,7 +164,7 @@ static void setter(uint32_t index, v8::Local<v8::Value> input, const v8::Propert
 static void setter(v8::Local<v8::String> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
     // retrieve handle to the original object and convert the requested property
-    Handle<Php::Array>      handle(info.Data());
+    Handle                  handle(info.Data());
     v8::String::Utf8Value   name(property);
 
     // store the property inside the array
@@ -180,8 +180,8 @@ Array::Array(Php::Array array) :
     _template(v8::ObjectTemplate::New())
 {
     // register the property handlers
-    _template->SetNamedPropertyHandler(getter, setter, nullptr, nullptr, enumerator, Handle<Php::Array>(array));
-    _template->SetIndexedPropertyHandler(getter, setter, nullptr, nullptr, nullptr, Handle<Php::Array>(array));
+    _template->SetNamedPropertyHandler(getter, setter, nullptr, nullptr, enumerator, Handle(array));
+    _template->SetIndexedPropertyHandler(getter, setter, nullptr, nullptr, nullptr, Handle(array));
 }
 
 /**
