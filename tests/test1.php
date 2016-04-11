@@ -109,7 +109,7 @@ $context->assign('object', new MyClass("abcd"));
 $context->assign('create', function($x) {
     
     
-    throw new Exception("exception");
+    //throw new Exception("exception");
     
     return new MyClass($x);
 });
