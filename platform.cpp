@@ -35,6 +35,60 @@ static std::mutex mutex;
 static std::atomic<Platform*> platform;
 
 /**
+ *  Execute a v8::Task with a bit of delay, like we want in the CallDelayedOnForegroundThread
+ *  method.
+ */
+class DelayedTask : public v8::Task
+{
+private:
+    /**
+     *  The underlying task we want to execute
+     *  @var  v8::Task
+     */
+    v8::Task *_task;
+
+    /**
+     *  The amount of delay that we want before executing the task
+     *  @var  double
+     */
+    double _delay;
+
+public:
+    /**
+     *  Constructor
+     *  @param   task
+     *  @param   delay
+     */
+    DelayedTask(v8::Task *task, double delay) : _task(task), _delay(delay) {}
+
+    /**
+     *  Destructor, we delete the underlying task from here
+     */
+    virtual ~DelayedTask()
+    {
+        delete _task;
+    }
+
+    /**
+     *  The abstract Run method of the v8::Task interface
+     */
+    void Run() override
+    {
+        // so first we sleep for '_delay' seconds
+        std::this_thread::sleep_for(std::chrono::duration<double, std::deci>(_delay));
+
+        // and then we run the actual task
+        _task->Run();
+    }
+};
+
+/**
+ *  Include the dumps of the natives and snapshot blobs
+ */
+#include "natives_blob.h"
+#include "snapshot_blob.h"
+
+/**
  *  Constructor
  */
 Platform::Platform() :
@@ -87,6 +141,20 @@ void Platform::create()
 
             // initialize the ICU and v8 engine
             v8::V8::InitializeICU();
+
+            // create a setup a StartupData object for the natives blob
+            v8::StartupData natives;
+            natives.data = (const char*) _tmp_natives_blob_bin;
+            natives.raw_size = _tmp_natives_blob_bin_len;
+            v8::V8::SetNativesDataBlob(&natives);
+
+            // create a setup a StartupData object for the snapshot blob
+            v8::StartupData snapshot;
+            snapshot.data = (const char*) _tmp_snapshot_blob_bin;
+            snapshot.raw_size = _tmp_snapshot_blob_bin_len;
+            v8::V8::SetSnapshotDataBlob(&snapshot);
+
+            // initialize the platform
             v8::V8::InitializePlatform(result);
             v8::V8::Initialize();
 
@@ -236,6 +304,20 @@ void Platform::CallOnForegroundThread(v8::Isolate *isolate, v8::Task *task)
      *  Because of this I hereby declare this function to be utterly
      *  useless. It can never be called, but we can't compile without.
      */
+}
+
+/**
+ * Schedules a task to be invoked on a foreground thread wrt a specific
+ * |isolate| after the given number of seconds |delay_in_seconds|.
+ * Tasks posted for the same isolate should be execute in order of
+ * scheduling. The definition of "foreground" is opaque to V8.
+ */
+void Platform::CallDelayedOnForegroundThread(v8::Isolate *isolate, v8::Task *task, double delay_in_seconds)
+{
+    // we simply call the CallOnBackgroundThread method which will queue our task, but before that
+    // we turn it into a DelayedTask. The ExpectedRuntime here doesn't matter as our implementation
+    // of CallOnBackgroundThread doesn't do anything with it anyway
+    CallOnBackgroundThread(new DelayedTask(task, delay_in_seconds), ExpectedRuntime::kShortRunningTask);
 }
 
 /**

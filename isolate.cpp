@@ -21,6 +21,7 @@
 #include "isolate.h"
 #include <cstring>
 #include <cstdlib>
+#include <iostream>
 
 /**
  *  Start namespace
@@ -33,6 +34,24 @@ namespace JS {
  */
 static thread_local std::unique_ptr<Isolate> isolate;
 
+class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
+public:
+    virtual void* Allocate(size_t length) {
+        void* data = AllocateUninitialized(length);
+        return data == NULL ? data : memset(data, 0, length);
+    }
+    virtual void* AllocateUninitialized(size_t length)
+    {
+        return malloc(length);
+    }
+    virtual void Free(void* data, size_t)
+    {
+        free(data);
+    }
+};
+
+static ArrayBufferAllocator allocator;
+
 /**
  *  Constructor
  */
@@ -41,8 +60,14 @@ Isolate::Isolate()
     // create a platform
     Platform::create();
 
+    // create our parameters
+    v8::Isolate::CreateParams params;
+
+    // set our custom allocator
+    params.array_buffer_allocator = &allocator;
+
     // create the actual isolate
-    _isolate = v8::Isolate::New();
+    _isolate = v8::Isolate::New(params);
 
     // and enter it
     _isolate->Enter();

@@ -1,3 +1,5 @@
 *.o
 *.so
 *.d
+*_blob.bin
+*_blob.h

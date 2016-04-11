@@ -115,6 +115,14 @@ public:
     void CallOnForegroundThread(v8::Isolate *isolate, v8::Task *task) override;
 
     /**
+     * Schedules a task to be invoked on a foreground thread wrt a specific
+     * |isolate| after the given number of seconds |delay_in_seconds|.
+     * Tasks posted for the same isolate should be execute in order of
+     * scheduling. The definition of "foreground" is opaque to V8.
+     */
+    void CallDelayedOnForegroundThread(v8::Isolate *isolate, v8::Task *task, double delay_in_seconds) override;
+
+    /**
      *  Retrieve the monotonically increasing time. The starting point
      *  is not relevant, but it must return at least millisecond-precision
      *

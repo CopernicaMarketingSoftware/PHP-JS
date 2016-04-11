@@ -26,6 +26,7 @@ namespace JS {
  */
 JSObject::Iterator::Iterator(Php::Base *base, const Stack<v8::Object> &object) :
     Php::Iterator(base),
+    _object(object),
     _position(0)
 {
     // create a handle scope, so variables "fall out of scope" and "enter" the context
@@ -35,7 +36,6 @@ JSObject::Iterator::Iterator(Php::Base *base, const Stack<v8::Object> &object) :
     // assign variables, this would normally be done inside
     // the initializer list, but that way we can't create a
     // HandleScope first and v8 refuses to work without one
-    _object = object;
     _keys   = _object->GetPropertyNames();
     _size   = _keys->Length();
 }
@@ -172,7 +172,7 @@ Php::Value JSObject::__call(const char *name, Php::Parameters &params)
     // create a handle scope, so variables "fall out of scope", "enter" the context and retrieve the value
     v8::HandleScope                     scope(Isolate::get());
     v8::Context::Scope                  context(_object->CreationContext());
-    v8::Local<v8::Function>             function(_object->Get(value(name)).As<v8::Function>());
+    v8::Local<v8::Function>             function(_object->Get(value(Php::Value(name))).As<v8::Function>());
     std::vector<v8::Local<v8::Value>>   input;
 
     // check whether the value actually exists

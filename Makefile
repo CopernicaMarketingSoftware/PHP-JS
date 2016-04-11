@@ -99,7 +99,8 @@ LINKER_DEPENDENCIES	=	-lphpcpp -lv8
 
 RM					=	rm -f
 CP					=	cp -f
-MKDIR				=	mkdir -p
+MKDIR					=	mkdir -p
+XXD					=	xxd -i
 
 
 #
@@ -112,7 +113,7 @@ MKDIR				=	mkdir -p
 
 SOURCES				=	$(wildcard *.cpp)
 OBJECTS				=	$(SOURCES:%.cpp=%.o)
-DEPENDENCIES		=	$(SOURCES:%.cpp=%.d)
+DEPENDENCIES			=	$(SOURCES:%.cpp=%.d)
 
 
 #
@@ -126,10 +127,20 @@ all:					${OBJECTS} ${EXTENSION}
 #
 -include ${DEPENDENCIES}
 
+natives_blob.h: natives_blob.bin
+	${CP} natives_blob.bin /tmp/natives_blob.bin
+	${XXD} /tmp/natives_blob.bin > natives_blob.h
+	${RM} /tmp/natives_blob.bin
+
+snapshot_blob.h: snapshot_blob.bin
+	${CP} snapshot_blob.bin /tmp/snapshot_blob.bin
+	${XXD} /tmp/snapshot_blob.bin > snapshot_blob.h
+	${RM} /tmp/snapshot_blob.bin
+
 ${EXTENSION}:			${OBJECTS}
 						${LINKER} ${LINKER_FLAGS} -o $@ ${OBJECTS} ${LINKER_DEPENDENCIES}
 
-${OBJECTS}:
+${OBJECTS}: snapshot_blob.h natives_blob.h
 						${COMPILER} ${COMPILER_FLAGS} -o $@ ${@:%.o=%.cpp}
 
 install:
