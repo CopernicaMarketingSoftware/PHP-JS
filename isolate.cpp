@@ -21,7 +21,6 @@
 #include "isolate.h"
 #include <cstring>
 #include <cstdlib>
-#include <iostream>
 
 /**
  *  Start namespace
@@ -69,6 +68,10 @@ Isolate::Isolate()
     // create the actual isolate
     _isolate = v8::Isolate::New(params);
 
+    // associate ourselves with this isolate
+    // so that we can find it back from the pointer
+    _isolate->SetData(0, this);
+
     // and enter it
     _isolate->Enter();
 }
@@ -78,11 +81,83 @@ Isolate::Isolate()
  */
 Isolate::~Isolate()
 {
+    // run all tasks still awaiting executing
+    runTasks();
+
+    /**
+     *  the tasks that are still there are scheduled
+     *  somewhere in the future, we just delete these
+     *  - this seems like a strange thing to do, but
+     *  executing them now seems to throw v8 off guard
+     *  and results in either a deadlock or some weird
+     *  error message about garbage collection running
+     *  in some old "space" or something equally weird
+     *  and confusing.
+     */
+    _tasks.clear();
+
     // leave the isolate scope
     _isolate->Exit();
 
     // clean it up
     _isolate->Dispose();
+}
+
+/**
+ *  Perform all waiting tasks for this isolate
+ */
+void Isolate::runTasks()
+{
+    // no tasks? then we're done fast!
+    if (_tasks.empty()) return;
+
+    // determine the current time
+    auto now = std::chrono::system_clock::now();
+
+    // loop over all the tasks
+    for (auto iter = _tasks.begin(); iter != _tasks.end(); ++iter)
+    {
+        // is the execution time still in the future?
+        if (now < iter->first)
+        {
+            // first task? then don't remove anything
+            if (iter == _tasks.begin()) return;
+
+            // remove from the beginning up until the task
+            // since we already moved past the last task we
+            // need to go back one so we don't remove a task
+            // we have not actually executed yet
+            _tasks.erase(_tasks.begin(), --iter);
+
+            // tasks executed and removed
+            return;
+        }
+
+        // execute the task
+        iter->second->Run();
+    }
+
+    // we ran through all the tasks and executed all of them
+    _tasks.clear();
+}
+
+/**
+ *  Schedule a task to be executed
+ *
+ *  @param  isolate The isolate to execute the task under
+ *  @param  task    The task to execute
+ *  @param  delay   Number of seconds to wait before executing
+ */
+void Isolate::scheduleTask(v8::Isolate *isolate, v8::Task *task, double delay)
+{
+    // first retrieve the isolate to schedule it under
+    auto *real = static_cast<Isolate*>(isolate->GetData(0));
+
+    // determine the time at which the task should be executed
+    auto expire = std::chrono::system_clock::now() + std::chrono::microseconds{ static_cast<int64_t>(delay * 1000000) };
+
+    // schedule the task to be executed
+    real->_tasks.emplace(std::make_pair(expire, std::unique_ptr<v8::Task>{ task }));
 }
 
 /**
@@ -94,6 +169,9 @@ v8::Isolate *Isolate::get()
 {
     // do we still have to create the isolate?
     if (!isolate) isolate.reset(new Isolate);
+
+    // execute tasks for this isolate
+    isolate->runTasks();
 
     // return the isolate
     return *isolate;

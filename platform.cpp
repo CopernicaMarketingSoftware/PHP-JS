@@ -13,6 +13,7 @@
  */
 #include <v8.h>
 #include "platform.h"
+#include "isolate.h"
 #include <atomic>
 #include <time.h>
 #include <mutex>
@@ -185,7 +186,7 @@ void Platform::shutdown()
      *  all PHP engines to be destructed, but we actually do
      *  stay loaded in memory. So we have to make sure that
      *  this variable is correctly set to a nullptr, so that
-     *  the get() method creates a new instance.
+     *  the create() method creates a new instance.
      */
 
     // retrieve the current platform
@@ -314,10 +315,8 @@ void Platform::CallOnForegroundThread(v8::Isolate *isolate, v8::Task *task)
  */
 void Platform::CallDelayedOnForegroundThread(v8::Isolate *isolate, v8::Task *task, double delay_in_seconds)
 {
-    // we simply call the CallOnBackgroundThread method which will queue our task, but before that
-    // we turn it into a DelayedTask. The ExpectedRuntime here doesn't matter as our implementation
-    // of CallOnBackgroundThread doesn't do anything with it anyway
-    CallOnBackgroundThread(new DelayedTask(task, delay_in_seconds), ExpectedRuntime::kShortRunningTask);
+    // schedule this task to be executed in the isolate
+    Isolate::scheduleTask(isolate, task, delay_in_seconds);
 }
 
 /**

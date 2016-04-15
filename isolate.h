@@ -22,7 +22,10 @@
 /**
  *  Dependencies
  */
+#include <v8-platform.h>
+#include <chrono>
 #include <v8.h>
+#include <map>
 
 /**
  *  Start namespace
@@ -40,6 +43,17 @@ private:
      *  @var    v8::Isolate*
      */
     v8::Isolate *_isolate;
+
+    /**
+     *  List of tasks to execute
+     *  @var    std::multimap<std::chrono::system_clock::time_point, std::unique_ptr<v8::Task>>
+     */
+    std::multimap<std::chrono::system_clock::time_point, std::unique_ptr<v8::Task>> _tasks;
+
+    /**
+     *  Perform all waiting tasks for this isolate
+     */
+    void runTasks();
 public:
     /**
      *  Constructor
@@ -50,6 +64,15 @@ public:
      *  Destructor
      */
     ~Isolate();
+
+    /**
+     *  Schedule a task to be executed
+     *
+     *  @param  isolate The isolate to schedule the task under
+     *  @param  task    The task to execute
+     *  @param  delay   Number of seconds to wait before executing
+     */
+    static void scheduleTask(v8::Isolate *isolate, v8::Task *task, double delay);
 
     /**
      *  Get the isolate for this thread

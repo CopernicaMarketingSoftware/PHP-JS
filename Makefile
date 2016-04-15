@@ -148,5 +148,5 @@ install:
 						${CP} ${INI} ${INI_DIR}
 
 clean:
-						${RM} ${EXTENSION} ${OBJECTS}
+						${RM} ${EXTENSION} ${OBJECTS} ${DEPENDENCIES}
 
