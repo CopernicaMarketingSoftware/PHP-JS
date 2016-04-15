@@ -36,54 +36,6 @@ static std::mutex mutex;
 static std::atomic<Platform*> platform;
 
 /**
- *  Execute a v8::Task with a bit of delay, like we want in the CallDelayedOnForegroundThread
- *  method.
- */
-class DelayedTask : public v8::Task
-{
-private:
-    /**
-     *  The underlying task we want to execute
-     *  @var  v8::Task
-     */
-    v8::Task *_task;
-
-    /**
-     *  The amount of delay that we want before executing the task
-     *  @var  double
-     */
-    double _delay;
-
-public:
-    /**
-     *  Constructor
-     *  @param   task
-     *  @param   delay
-     */
-    DelayedTask(v8::Task *task, double delay) : _task(task), _delay(delay) {}
-
-    /**
-     *  Destructor, we delete the underlying task from here
-     */
-    virtual ~DelayedTask()
-    {
-        delete _task;
-    }
-
-    /**
-     *  The abstract Run method of the v8::Task interface
-     */
-    void Run() override
-    {
-        // so first we sleep for '_delay' seconds
-        std::this_thread::sleep_for(std::chrono::duration<double, std::deci>(_delay));
-
-        // and then we run the actual task
-        _task->Run();
-    }
-};
-
-/**
  *  Include the dumps of the natives and snapshot blobs
  */
 #include "natives_blob.h"
