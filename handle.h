@@ -40,17 +40,6 @@ private:
      *  @var    v8::Handle<v8::External>
      */
     v8::Local<v8::External> _handle;
-
-    /**
-     *  The destructor callback to clean up the object
-     *
-     *  @param  data    callback data
-     */
-    static void destructor(const v8::WeakCallbackData<v8::Value, External> &data)
-    {
-        // delete the object
-        delete data.GetParameter();
-    }
 public:
     /**
      *  Constructor

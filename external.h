@@ -47,7 +47,7 @@ private:
      *
      *  @param  data    callback data
      */
-    static void destructor(const v8::WeakCallbackData<v8::Value, External> &data)
+    static void destructor(const v8::WeakCallbackInfo<External> &data)
     {
         // stop tracking the external reference
         Context::current()->untrack(data.GetParameter());
@@ -92,7 +92,7 @@ public:
     {
         // create the persistent handle and make it weak
         _persistent.Reset(Isolate::get(), handle);
-        _persistent.SetWeak<External>(this, &destructor);
+        _persistent.SetWeak<External>(this, &destructor, v8::WeakCallbackType::kParameter);
     }
 
     /**
