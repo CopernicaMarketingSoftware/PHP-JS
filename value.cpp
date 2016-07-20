@@ -92,6 +92,10 @@ v8::Handle<v8::Value> value(const Php::Value &input)
             case Php::Type::Callable:   result = v8::FunctionTemplate::New(Isolate::get(), callback, Handle(input))->GetFunction(); break;
             case Php::Type::Array:      result = Array(input);                                                                      break;
             default:
+                // php 7 does not return the Bool type anymore, but rather True and False
+                // types, which would not compile with our legacy code, so we check if it
+                // is boolean here again, using a function that works identically for both
+                if (input.isBool())  result = v8::Boolean::New(Isolate::get(), input);
                 break;
         }
     }

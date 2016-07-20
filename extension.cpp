@@ -51,14 +51,14 @@ extern "C" {
         Php::Class<JS::Context> context("JS\\Context");
 
         // properties can be assigned
-        context.method("assign", &JS::Context::assign, {
+        context.method<&JS::Context::assign>("assign", {
             Php::ByVal("name", Php::Type::String, true),
             Php::ByVal("value", Php::Type::Null, true),
             Php::ByVal("attribute", Php::Type::Numeric, false)
         });
 
         // add a method to execute some script
-        context.method("evaluate", &JS::Context::evaluate, {
+        context.method<&JS::Context::evaluate>("evaluate", {
             Php::ByVal("script", Php::Type::String, true),
             Php::ByVal("timeout", Php::Type::Numeric, false)
         });
