@@ -83,7 +83,7 @@ v8::Handle<v8::Value> value(const Php::Value &input)
         // the value can be of many types
         switch (input.type())
         {
-            case Php::Type::Null:       /* don't set anything, let it be empty */                                                   break;
+            case Php::Type::Null:       result = v8::Null(Isolate::get());                                                          break;
             case Php::Type::Numeric:    result = v8::Integer::New(Isolate::get(), input);                                           break;
             case Php::Type::Float:      result = v8::Number::New(Isolate::get(), input);                                            break;
             case Php::Type::Bool:       result = v8::Boolean::New(Isolate::get(), input);                                           break;

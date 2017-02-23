@@ -54,8 +54,17 @@ Platform::Platform() :
  */
 Platform::~Platform()
 {
-    // we are no longer running
-    _running = false;
+    // we stop the platform first
+    stop();
+}
+
+/**
+ *  Stop running the platform. 
+ */
+void Platform::stop()
+{
+    // we set it to false, but if the old value was not true then we leap out
+    if (!_running.exchange(false)) return;
 
     // signal the thread in case it is waiting for input
     _condition.notify_one();
@@ -159,8 +168,8 @@ void Platform::shutdown()
         // still not set, we need to create it now
         if (result != nullptr)
         {
-            // create the platform
-            delete result;
+			// we need to stop the platform before disposing and shutting it down
+			result->stop();
 
             // and shut down the engine (this also takes care of the ICU) and the platform
             v8::V8::Dispose();
@@ -171,7 +180,10 @@ void Platform::shutdown()
 
             // store the new platform
             platform.store(nullptr, std::memory_order_relaxed);
-        }
+        
+			// delete the platform
+            delete result;
+		}
     }
 }
 

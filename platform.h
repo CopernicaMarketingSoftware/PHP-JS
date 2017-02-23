@@ -63,6 +63,11 @@ private:
      *  @var    std::thread
      */
     std::thread _worker;
+    
+    /**
+     *  (blocking) method to stop running a platform.
+     */
+    void stop();
 
     /**
      *  Execute some work, this is called
