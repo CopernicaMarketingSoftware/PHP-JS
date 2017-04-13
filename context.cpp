@@ -19,6 +19,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <atomic>
 
 /**
  *  Start namespace
@@ -159,34 +160,58 @@ Php::Value Context::evaluate(Php::Parameters &params)
     v8::Local<v8::String>   source(v8::String::NewFromUtf8(Isolate::get(), params[0]));
     v8::Local<v8::Script>   script(v8::Script::Compile(source));
 
-    // we create a simple mutex, condition_variable and a lock so we can use wait_until on
+    // we create an atomic_flag and condition_variable so we can use wait_until on
     // another thread which we can stop from our main thread. We use this to maybe abort
     // execution of javascript after a certain amount of time.
-    std::mutex done;
+    std::atomic_flag busy = ATOMIC_FLAG_INIT;
     std::condition_variable condition;
-    std::unique_lock<std::mutex> lock(done);
+
+    // we are not yet finished
+    busy.test_and_set();
 
     // create a temporary thread which will mostly just sleep, but kill the script after a certain time period
     std::thread aborter;
 
     // only create this thread if our timeout is higher than 0
-    if (timeout > 0) aborter = std::move(std::thread([this, &condition, &lock, timeout]() {
+    if (timeout > 0) aborter = std::move(std::thread([this, &busy, &condition, timeout]() {
 
-        // we wait until some point in the future, in case we timeout we terminate execution
-        if (condition.wait_until(lock, std::chrono::system_clock::now() + std::chrono::seconds(timeout)) == std::cv_status::timeout)
-            _context->GetIsolate()->TerminateExecution();
+        // create a lock
+        std::mutex mutex;
+        std::unique_lock<std::mutex> lock(mutex);
 
+        // time we want to terminate execution
+        auto end = std::chrono::system_clock::now() + std::chrono::seconds(timeout);
+
+        // has the execution timed out?
+        std::cv_status status = std::cv_status::no_timeout;
+
+        // check to prevent a spurious wakeup from removing the timeout
+        // additionally, the main thread might have finished before we even start
+        while (busy.test_and_set() && status != std::cv_status::timeout)
+        {
+            // we wait until some point in the future (this unlocks the lock until it returns)
+            status = condition.wait_until(lock, end);
+        }
+
+        // in case we timeout we terminate execution
+        if (status == std::cv_status::timeout) _context->GetIsolate()->TerminateExecution();
     }));
 
     // execute the script
     v8::Local<v8::Value>    result(script->Run());
 
+    // we are no longer busy
+    busy.clear();
+
+    // notify the aborter thread
+    condition.notify_one();
+
+    // join our aborting thread
+    if (aborter.joinable()) aborter.join();
+
     // did we catch an exception?
     if (catcher.HasCaught())
     {
-        // join our aborting thread
-        if (aborter.joinable()) aborter.join();
-
         // if we have terminated we just throw a fixed error message as the catcher.Message()
         // method won't return anything useful (in fact it'll return nothing meaning we just segfault)
         if (catcher.HasTerminated()) throw Php::Exception("Execution timed out");
@@ -200,15 +225,6 @@ Php::Value Context::evaluate(Php::Parameters &params)
 
         // pass this exception on to PHP userspace
         throw Php::Exception(std::string(*string, string.length()));
-    }
-    else
-    {
-        // unlock our lock and notify our aborting thread
-        lock.unlock();
-        condition.notify_one();
-
-        // join our aborter thread
-        if (aborter.joinable()) aborter.join();
     }
 
     // return the result
