@@ -193,8 +193,17 @@ Php::Value Context::evaluate(Php::Parameters &params)
             status = condition.wait_until(lock, end);
         }
 
-        // in case we timeout we terminate execution
-        if (status == std::cv_status::timeout) _context->GetIsolate()->TerminateExecution();
+        // in case we timeout we must terminate execution
+        if (status != std::cv_status::timeout) return;
+
+        // create a handle, so the local variable created below falls out of scope
+        v8::HandleScope scope(Isolate::get());
+
+        // access the main threads context
+        v8::Local<v8::Context> context(_context);
+
+        // terminate execution
+        context->GetIsolate()->TerminateExecution();
     }));
 
     // execute the script
