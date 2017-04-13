@@ -91,7 +91,7 @@ public:
      *
      *  @return v8::Local<T>
      */
-    operator v8::Local<T> () const
+    operator const v8::Local<T> () const
     {
         // create the value
         return v8::Local<T>::New(Isolate::get(), _handle);

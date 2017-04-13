@@ -141,6 +141,7 @@ void Context::assign(Php::Parameters &params)
  *
  *  @param  params  array with one parameter: the code to execute
  *  @return Php::Value
+ *  @throws Php::Exception
  */
 Php::Value Context::evaluate(Php::Parameters &params)
 {
@@ -196,14 +197,11 @@ Php::Value Context::evaluate(Php::Parameters &params)
         // in case we timeout we must terminate execution
         if (status != std::cv_status::timeout) return;
 
-        // create a handle, so the local variable created below falls out of scope
+        // create a handle for the local variable that is created by dereferencing _context
         v8::HandleScope scope(Isolate::get());
 
-        // access the main threads context
-        v8::Local<v8::Context> context(_context);
-
         // terminate execution
-        context->GetIsolate()->TerminateExecution();
+        _context->GetIsolate()->TerminateExecution();
     }));
 
     // execute the script

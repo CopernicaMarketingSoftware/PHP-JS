@@ -116,6 +116,7 @@ public:
      *
      *  @param  params  array with one parameter: the code to execute
      *  @return Php::Value
+     *  @throws Php::Exception
      */
     Php::Value evaluate(Php::Parameters &params);
 };
