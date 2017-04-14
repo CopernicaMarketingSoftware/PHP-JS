@@ -161,24 +161,18 @@ Php::Value Context::evaluate(Php::Parameters &params)
     v8::Local<v8::String>   source(v8::String::NewFromUtf8(Isolate::get(), params[0]));
     v8::Local<v8::Script>   script(v8::Script::Compile(source));
 
-    // we create an atomic_flag and condition_variable so we can use wait_until on
+    // we create a mutex and a condition_variable so we can use wait_until on
     // another thread which we can stop from our main thread. We use this to maybe abort
     // execution of javascript after a certain amount of time.
-    std::atomic_flag busy = ATOMIC_FLAG_INIT;
+    bool busy = true;
+    std::mutex mutex;
     std::condition_variable condition;
-
-    // we are not yet finished
-    busy.test_and_set();
 
     // create a temporary thread which will mostly just sleep, but kill the script after a certain time period
     std::thread aborter;
 
     // only create this thread if our timeout is higher than 0
-    if (timeout > 0) aborter = std::move(std::thread([this, &busy, &condition, timeout]() {
-
-        // create a lock
-        std::mutex mutex;
-        std::unique_lock<std::mutex> lock(mutex);
+    if (timeout > 0) aborter = std::move(std::thread([this, &busy, &mutex, &condition, timeout]() {
 
         // time we want to terminate execution
         auto end = std::chrono::system_clock::now() + std::chrono::seconds(timeout);
@@ -186,13 +180,19 @@ Php::Value Context::evaluate(Php::Parameters &params)
         // has the execution timed out?
         std::cv_status status = std::cv_status::no_timeout;
 
+        // obtain a lock around busy
+        std::unique_lock<std::mutex> lock(mutex);
+
         // check to prevent a spurious wakeup from removing the timeout
         // additionally, the main thread might have finished before we even start
-        while (busy.test_and_set() && status != std::cv_status::timeout)
+        while (busy && status != std::cv_status::timeout)
         {
             // we wait until some point in the future (this unlocks the lock until it returns)
             status = condition.wait_until(lock, end);
         }
+
+        // unlock the lock
+        lock.unlock();
 
         // in case we timeout we must terminate execution
         if (status != std::cv_status::timeout) return;
@@ -207,8 +207,14 @@ Php::Value Context::evaluate(Php::Parameters &params)
     // execute the script
     v8::Local<v8::Value>    result(script->Run());
 
+    // obtain a lock around busy
+    std::unique_lock<std::mutex> lock(mutex);
+
     // we are no longer busy
-    busy.clear();
+    busy = false;
+
+    // unlock the lock
+    lock.unlock();
 
     // notify the aborter thread
     condition.notify_one();
