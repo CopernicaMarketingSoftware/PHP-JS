@@ -63,8 +63,20 @@ Platform::~Platform()
  */
 void Platform::stop()
 {
+	// we modify the _running, it may be that the other thread has a lock
+	// to protect this variable, although it is attomic, we need to respect
+	// this lock. E.g. run uses a lock before it enters the _condition.wait()
+	// if we don't take a lock here, we may update running and call
+	// notify before the other thread called wait, but already checked if
+	// we were running. In that case the other thread will never be notified.
+	std::unique_lock<std::mutex> lock(_mutex);
+
     // we set it to false, but if the old value was not true then we leap out
     if (!_running.exchange(false)) return;
+    
+	// we need to release the lock over here, so the other thread can move
+	// on.
+	lock.unlock();
 
     // signal the thread in case it is waiting for input
     _condition.notify_one();
