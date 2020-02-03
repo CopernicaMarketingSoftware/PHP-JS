@@ -216,7 +216,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
     bool method_exists  = Php::call("method_exists", *handle, *name);
     bool is_callable    = handle->isCallable(*name);
     bool contains       = handle->contains(*name, name.length());
-
+    
     // does a property exist by the given name and is it not defined as a method?
     if (contains && !method_exists)
     {
@@ -270,8 +270,17 @@ static void setter(uint32_t index, v8::Local<v8::Value> input, const v8::Propert
     v8::HandleScope         scope(Isolate::get());
     Handle                  handle(info.Holder()->GetInternalField(0));
 
-    // store the property inside the object
-    handle->call("offsetSet", static_cast<int64_t>(index), value(input));
+    // We are calling into PHP space so we need to catch all exceptions
+    try
+    {
+        // store the property inside the object
+        handle->call("offsetSet", static_cast<int64_t>(index), value(input));
+    }
+    catch (const Php::Exception& exception)
+    {
+        // pass the exception on to javascript userspace
+        Isolate::get()->ThrowException(v8::Exception::Error(v8::String::NewFromUtf8(Isolate::get(), exception.what())));
+    }
 }
 
 /**
@@ -288,17 +297,26 @@ static void setter(v8::Local<v8::String> property, v8::Local<v8::Value> input, c
     Handle                  handle(info.Holder()->GetInternalField(0));
     v8::String::Utf8Value   name(property);
 
-    // if the object is not implementing ArrayAccess or has the given property as a member
-    // then we set it directly, otherwise we use the offsetSet method to use it as an array
-    if (!handle->instanceOf("ArrayAccess") || handle->contains(*name, name.length()))
+    // We are calling into PHP space so we need to catch all exceptions
+    try
     {
-        // store the property inside the object
-        handle->set(*name, name.length(), value(input));
+        // if the object is not implementing ArrayAccess or has the given property as a member
+        // then we set it directly, otherwise we use the offsetSet method to use it as an array
+        if (!handle->instanceOf("ArrayAccess") || handle->contains(*name, name.length()))
+        {
+            // store the property inside the object
+            handle->set(*name, name.length(), value(input));
+        }
+        else
+        {
+            // set it as an array offset
+            handle->call("offsetSet", Php::Value{ *name, name.length() }, value(input));
+        }
     }
-    else
+    catch (const Php::Exception& exception)
     {
-        // set it as an array offset
-        handle->call("offsetSet", Php::Value{ *name, name.length() }, value(input));
+        // pass the exception on to javascript userspace
+        Isolate::get()->ThrowException(v8::Exception::Error(v8::String::NewFromUtf8(Isolate::get(), exception.what())));
     }
 }
 
