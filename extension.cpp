@@ -70,11 +70,20 @@ extern "C" {
         extension.add(std::move(context));
         extension.add(std::move(object));
 
-        // the isolate gets cleaned up at the end of each pageview
-        extension.onIdle(JS::Isolate::destroy);
+        // the isolate should get cleaned up after every pageview
+        // but because php can still keep references to c++ objects
+        // alive until after onIdle we clean up before every pageview
+        // and on shutdown instead
+        extension.onRequest(JS::Isolate::destroy);
 
-        // the platform needs to be cleaned up on engine shutdown
-        extension.onShutdown(JS::Platform::shutdown);
+        // the platform and isolate needs to be cleaned up on engine shutdown
+        extension.onShutdown([]{
+            // clean up the isolate
+            JS::Isolate::destroy();
+
+            // clean up the platform
+            JS::Platform::shutdown();
+        });
 
         // return the extension
         return extension;
