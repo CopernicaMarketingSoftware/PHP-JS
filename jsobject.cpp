@@ -100,37 +100,80 @@ bool JSObject::__isset(const Php::Value &name)
     return result.IsJust() && result.FromJust();
 }
 
-#if false
-
 /**
  *  Call a function
- *
  *  @param  name        Name of the function to call
  *  @param  params      The input parameters
  *  @return The result of the function call
  */
 Php::Value JSObject::__call(const char *name, Php::Parameters &params)
 {
-    // create a handle scope, so variables "fall out of scope", "enter" the context and retrieve the value
-    v8::HandleScope                     scope(Isolate::get());
-    v8::Context::Scope                  context(_object->CreationContext());
-    v8::Local<v8::Function>             function(_object->Get(value(Php::Value(name))).As<v8::Function>());
-    std::vector<v8::Local<v8::Value>>   input;
+    // scope for the call
+    Scope scope(_context);
 
-    // check whether the value actually exists
-    if (function.IsEmpty())             throw Php::Exception(std::string{ "No such method: " } + name);
+    // get the object in a local variable
+    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
+    
+    // construct the method name
+    auto methodname = v8::String::NewFromUtf8(_context->isolate(), name);
+    if (methodname.IsEmpty()) throw Php::Exception("invalid method name");
+    
+    // variables to store property
+    v8::Local<v8::Value> property;
+    
+    // do the checks
+    if (!object->Get(scope, methodname.ToLocalChecked()).ToLocal(&property)) throw Php::Exception("no such property");
+    
+    // it must be a function
+    if (!property->IsFunction()) throw Php::Exception("not a method");
 
-    // reserve space for the input values
-    input.reserve(params.size());
-
-    // fill all the elements
-    for (auto &param : params) input.push_back(value(param));
-
-    // execute the function and return the result
-    return value(function->Call(static_cast<v8::Local<v8::Object>>(_object), input.size(), input.data()));
+    // convert to a function
+    v8::Local<v8::Function> method = property.As<v8::Function>();
+    
+    // we need the parameters
+    std::vector<v8::Local<v8::Value>> args;
+    
+    // convert the parameters
+    for (size_t i = 0; i < params.size(); ++i) 
+    {
+        // set a parameter
+        args.push_back(FromPhp(_context->isolate(), params[i]));
+    }
+        
+    // the result
+    auto result = method->Call(scope, object, args.size(), args.data());
+    
+    // on success
+    if (!result.IsEmpty()) return ToPhp(_context, result.ToLocalChecked());
+    
+    // a failure took place
+    // @todo should we be capturing exceptions?
+    // @todo possibly report this
+    
+    // done
+    return nullptr;
+    
+    
+    
+//    
+//    // create a handle scope, so variables "fall out of scope", "enter" the context and retrieve the value
+//    v8::HandleScope                     scope(Isolate::get());
+//    v8::Context::Scope                  context(_object->CreationContext());
+//    v8::Local<v8::Function>             function(_object->Get(value(Php::Value(name))).As<v8::Function>());
+//    std::vector<v8::Local<v8::Value>>   input;
+//
+//    // check whether the value actually exists
+//    if (function.IsEmpty())             throw Php::Exception(std::string{ "No such method: " } + name);
+//
+//    // reserve space for the input values
+//    input.reserve(params.size());
+//
+//    // fill all the elements
+//    for (auto &param : params) input.push_back(value(param));
+//
+//    // execute the function and return the result
+//    return value(function->Call(static_cast<v8::Local<v8::Object>>(_object), input.size(), input.data()));
 }
-
-#endif
 
 /**
  *  Cast to a string

@@ -93,7 +93,7 @@ public:
      *  @param  params      The input parameters
      *  @return The result of the function call
      */
-    //Php::Value __call(const char *name, Php::Parameters &params);
+    Php::Value __call(const char *name, Php::Parameters &params);
 
     /**
      *  Cast to a string
