@@ -1,10 +1,11 @@
 /**
  *  jsobject.h
  *
- *  Class that wraps around an ecmascript object
- *  and makes it available to PHP userspace.
+ *  Class that wraps around an ecmascript object and makes it available to PHP
+ *  userspace.
  *
- *  @copyright 2015 Copernica B.V.
+ *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
+ *  @copyright 2015 - 2025 Copernica B.V.
  */
 
 /**
@@ -17,7 +18,6 @@
  */
 #include <phpcpp.h>
 #include <v8.h>
-#include "stack.h"
 
 /**
  *  Start namespace
@@ -25,99 +25,49 @@
 namespace JS {
 
 /**
+ *  Forward declarations
+ */
+class Context;
+
+/**
  *  Class definition
  */
-class JSObject :
-    public Php::Base,
-    public Php::Traversable
+class JSObject : public Php::Base, public Php::Traversable
 {
 private:
     /**
-     *  The underlying ecmascript object
-     *  @var    Stack<v8::Object>
+     *  The context in which we operate
+     *  @var std::shared_ptr<Context>
      */
-    Stack<v8::Object> _object;
+    std::shared_ptr<Context> _context;
+
+    /**
+     *  The underlying ecmascript object
+     *  @var    v8::Global<v8::Object>
+     */
+    v8::Global<v8::Object> _object;
+
 public:
     /**
-     *  Class definition
+     *  Constructor
+     *  @param  context     The context
+     *  @param  object      The ecmascript object
      */
-    class Iterator : public Php::Iterator
-    {
-    private:
-        /**
-         *  The underlying ecmascript object
-         *  @var    Stack<v8::Object>
-         */
-        Stack<v8::Object> _object;
-
-        /**
-         *  All properties in the object
-         *  @var    Stack<v8::Array>
-         */
-        Stack<v8::Array> _keys;
-
-        /**
-         *  Current position in the object
-         *  @var    uint32_t
-         */
-        uint32_t _position;
-
-        /**
-         *  Number of valid keys
-         *  @var    uint32_t
-         */
-        uint32_t _size;
-    public:
-        /**
-         *  Constructor
-         *
-         *  @param  base    The base that PHP-CPP insists on
-         *  @param  object  The object to iterate
-         */
-        Iterator(Php::Base *base, const Stack<v8::Object> &object);
-
-        /**
-         *  Is the iterator still valid?
-         *
-         *  @return is an element present at the current offset
-         */
-        bool valid() override;
-
-        /**
-         *  Retrieve the current value
-         *
-         *  @return value at current offset
-         */
-        Php::Value current() override;
-
-        /**
-         *  Retrieve the current key
-         *
-         *  @return the current key
-         */
-        Php::Value key() override;
-
-        /**
-         *  Move ahead to the next item
-         */
-        void next() override;
-
-        /**
-         *  Start over at the beginning
-         */
-        void rewind() override;
-    };
+    JSObject(const std::shared_ptr<Context> &context, const v8::Local<v8::Object> &object);
 
     /**
-     *  Constructor
-     *
-     *  @param  object  The ecmascript object
+     *  No copying
+     *  @param  that
      */
-    JSObject(v8::Handle<v8::Object> object);
+    JSObject(const JSObject &that) = delete;
+
+    /**
+     *  Destructor
+     */
+    virtual ~JSObject();
 
     /**
      *  Retrieve a property
-     *
      *  @param  name    Name of the property
      *  @return The requested property
      */
@@ -125,7 +75,6 @@ public:
 
     /**
      *  Change a property
-     *
      *  @param  name        Name of the property
      *  @param  property    New value for the property
      */
@@ -133,7 +82,6 @@ public:
 
     /**
      *  Check if a property is set
-     *
      *  @param  name        Name of the property
      *  @return Is the property set
      */
@@ -141,36 +89,27 @@ public:
 
     /**
      *  Call a function
-     *
      *  @param  name        Name of the function to call
      *  @param  params      The input parameters
      *  @return The result of the function call
      */
-    Php::Value __call(const char *name, Php::Parameters &params);
+    //Php::Value __call(const char *name, Php::Parameters &params);
 
     /**
      *  Cast to a string
-     *
      *  @return The result of the string conversion
      */
     Php::Value __toString();
 
     /**
      *  Retrieve the iterator
-     *
      *  @return The iterator
      */
-    Php::Iterator *getIterator() override;
-
-    /**
-     *  Retrieve the original ecmascript value
-     *
-     *  @return original ecmascript value
-     */
-    v8::Local<v8::Object> object() const;
+    virtual Php::Iterator *getIterator() override;
 };
 
 /**
  *  End namespace
  */
 }
+

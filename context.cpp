@@ -4,8 +4,10 @@
  *  The main javascript class, used for assigning variables
  *  and executing javascript
  *
- *  @copyright 2015 Copernica B.V.
+ *  @copyright 2015 - 2025 Copernica B.V.
  */
+
+#if false
 
 /**
  *  Dependencies
@@ -248,3 +250,6 @@ Php::Value Context::evaluate(Php::Parameters &params)
  *  End namespace
  */
 }
+
+
+#endif

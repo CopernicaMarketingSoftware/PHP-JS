@@ -3,18 +3,16 @@
  *
  *  Startup file for the PHP extension
  *
- *  @copyright 2015 Copernica BV
+ *  @copyright 2015 - 2025 Copernica BV
  */
 
 /**
  *  Dependencies
  */
 #include <phpcpp.h>
-#include "context.h"
+#include "jscontext.h"
 #include "jsobject.h"
-#include "isolate.h"
-#include "platform.h"
-#include <iostream>
+#include "newplatform.h"
 
 /**
  *  The VERSION macro is going to be used as string with surrounded quotes
@@ -39,7 +37,7 @@ extern "C" {
     {
         // static(!) Php::Extension object that should stay in memory
         // for the entire duration of the process (that's why it's static)
-        static Php::Extension extension("PHP-JS", THE_VERSION);
+        static Php::Extension extension("PHP-JS2", THE_VERSION);
 
         // declare the accessor attributes
         extension.add(Php::Constant("JS\\None",         v8::None));
@@ -48,17 +46,17 @@ extern "C" {
         extension.add(Php::Constant("JS\\DontEnumerate",v8::DontEnum));
 
         // create our context class
-        Php::Class<JS::Context> context("JS\\Context");
+        Php::Class<JS::JSContext> context("JS\\Context");
 
         // properties can be assigned
-        context.method<&JS::Context::assign>("assign", {
+        context.method<&JS::JSContext::assign>("assign", {
             Php::ByVal("name", Php::Type::String, true),
             Php::ByVal("value", Php::Type::Null, true),
             Php::ByVal("attribute", Php::Type::Numeric, false)
         });
 
         // add a method to execute some script
-        context.method<&JS::Context::evaluate>("evaluate", {
+        context.method<&JS::JSContext::evaluate>("evaluate", {
             Php::ByVal("script", Php::Type::String, true),
             Php::ByVal("timeout", Php::Type::Numeric, false)
         });
@@ -70,16 +68,8 @@ extern "C" {
         extension.add(std::move(context));
         extension.add(std::move(object));
 
-        // the isolate should get cleaned up after every pageview
-        // but because php can still keep references to c++ objects
-        // alive until after onIdle we clean up before every pageview
-        // and on shutdown instead
-        extension.onRequest(JS::Isolate::destroy);
-
-        // the platform and isolate needs to be cleaned up on engine shutdown
+        // the platform needs to be cleaned up on engine shutdown
         extension.onShutdown([]{
-            // clean up the isolate
-            JS::Isolate::destroy();
 
             // clean up the platform
             JS::Platform::shutdown();

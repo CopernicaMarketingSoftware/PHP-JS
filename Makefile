@@ -28,29 +28,14 @@ NAME				=	php-js
 #	PHP installations use a conf.d directory that holds a set of config files,
 #	one for each extension. Use this variable to specify this directory.
 #
-#	In Ubuntu 14.04 Apache 2.4 is used, which uses the mods-available directory
-# 	instead of a conf.d directory. In 16.04 the directory changed yet again.
-#   This has to be checked.
 #
 
-UBUNTU_MAJOR  := $(shell /usr/bin/lsb_release -r -s | cut -f1 -d.)
-OVER_SIXTEEN  := $(shell echo "${UBUNTU_MAJOR} >= 16" | bc)
-OVER_FOURTEEN := $(shell echo "${UBUNTU_MAJOR} >= 14" | bc)
-
-ifeq (${OVER_SIXTEEN}, 1)
-	INI_DIR		=	/etc/php/7.0/mods-available/
-else ifeq (${OVER_FOURTEEN}, 1)
-	INI_DIR		=	/etc/php5/mods-available/
-else
-	INI_DIR		=	/etc/php5/conf.d/
-endif
-
-
+INI_DIR				=	$(shell php-config --ini-path)/../mods-available
 
 #
 #	The extension dirs
 #
-#	This is normally a directory like /usr/lib/php5/20121221 (based on the
+#	This is normally a directory like /usr/lib/php/20121221 (based on the
 #	PHP version that you use. We make use of the command line 'php-config'
 #	instruction to find out what the extension directory is, you can override
 #	this with a different fixed directory
@@ -87,22 +72,13 @@ LINKER				=	c++
 #
 #	Compiler and linker flags
 #
-#	This variable holds the flags that are passed to the compiler. By default,
-# 	we include the -O2 flag. This flag tells the compiler to optimize the code,
-#	but it makes debugging more difficult. So if you're debugging your application,
-#	you probably want to remove this -O2 flag. At the same time, you can then
-#	add the -g flag to instruct the compiler to include debug information in
-#	the library (but this will make the final libphpcpp.so file much bigger, so
-#	you want to leave that flag out on production servers).
-#
-#	If your extension depends on other libraries (and it does at least depend on
-#	one: the PHP-CPP library), you should update the LINKER_DEPENDENCIES variable
-#	with a list of all flags that should be passed to the linker.
+#	- V8_COMPRESS_POINTERS is needed because the V8 library is compiled with a special optimization for pointers
+#	- V8_ENABLE_SANDBOX is needed because the V8 library is compiled with sandbox support
 #
 
-COMPILER_FLAGS		=	-Wall -c -O2 -MD -std=c++11 -fpic -DVERSION="`./version.sh`" -I. -g
+COMPILER_FLAGS		=	-Wall -c -O2 -MD -std=c++20 -fpic -DVERSION="`./version.sh`" -DV8_COMPRESS_POINTERS -DV8_ENABLE_SANDBOX -I. -g
 LINKER_FLAGS		=	-shared
-LINKER_DEPENDENCIES	=	-lphpcpp -lv8
+LINKER_DEPENDENCIES	=	-Wl,--no-as-needed -lphpcpp -lv8_libplatform -lv8
 
 
 #
@@ -128,7 +104,7 @@ XXD					=	xxd -i
 
 SOURCES				=	$(wildcard *.cpp)
 OBJECTS				=	$(SOURCES:%.cpp=%.o)
-DEPENDENCIES			=	$(SOURCES:%.cpp=%.d)
+DEPENDENCIES		=	$(SOURCES:%.cpp=%.d)
 
 
 #
@@ -142,20 +118,20 @@ all:					${OBJECTS} ${EXTENSION}
 #
 -include ${DEPENDENCIES}
 
-natives_blob.h: natives_blob.bin
-	${CP} natives_blob.bin /tmp/natives_blob.bin
-	${XXD} /tmp/natives_blob.bin > natives_blob.h
-	${RM} /tmp/natives_blob.bin
-
-snapshot_blob.h: snapshot_blob.bin
-	${CP} snapshot_blob.bin /tmp/snapshot_blob.bin
-	${XXD} /tmp/snapshot_blob.bin > snapshot_blob.h
-	${RM} /tmp/snapshot_blob.bin
+# natives_blob.h: natives_blob.bin
+# 	${CP} natives_blob.bin /tmp/natives_blob.bin
+# 	${XXD} /tmp/natives_blob.bin > natives_blob.h
+# 	${RM} /tmp/natives_blob.bin
+# 
+# snapshot_blob.h: snapshot_blob.bin
+# 	${CP} snapshot_blob.bin /tmp/snapshot_blob.bin
+# 	${XXD} /tmp/snapshot_blob.bin > snapshot_blob.h
+# 	${RM} /tmp/snapshot_blob.bin
 
 ${EXTENSION}:			${OBJECTS}
 						${LINKER} ${LINKER_FLAGS} -o $@ ${OBJECTS} ${LINKER_DEPENDENCIES}
 
-${OBJECTS}: snapshot_blob.h natives_blob.h
+${OBJECTS}:
 						${COMPILER} ${COMPILER_FLAGS} -o $@ ${@:%.o=%.cpp}
 
 install:

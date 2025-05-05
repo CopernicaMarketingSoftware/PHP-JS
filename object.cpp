@@ -9,6 +9,8 @@
  *  @copyright 2015 Copernica B.V.
  */
 
+#if false
+
 /**
  *  Dependencies
  */
@@ -366,3 +368,6 @@ Object::operator v8::Local<v8::Value> ()
  *  End namespace
  */
 }
+
+#endif
+

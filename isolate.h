@@ -22,10 +22,10 @@
 /**
  *  Dependencies
  */
-#include <v8-platform.h>
-#include <chrono>
+//#include <v8-platform.h>
+//#include <chrono>
 #include <v8.h>
-#include <map>
+//#include <map>
 
 /**
  *  Start namespace
@@ -39,6 +39,12 @@ class Isolate final
 {
 private:
     /**
+     *  The create-params
+     *  v8::Isolate::CreateParams
+     */
+    v8::Isolate::CreateParams _params;
+
+    /**
      *  The underlying isolate
      *  @var    v8::Isolate*
      */
@@ -48,22 +54,43 @@ private:
      *  List of tasks to execute
      *  @var    std::multimap<std::chrono::system_clock::time_point, std::unique_ptr<v8::Task>>
      */
-    std::multimap<std::chrono::system_clock::time_point, std::unique_ptr<v8::Task>> _tasks;
+//    std::multimap<std::chrono::system_clock::time_point, std::unique_ptr<v8::Task>> _tasks;
 
     /**
      *  Perform all waiting tasks for this isolate
      */
-    void runTasks();
+//    void runTasks();
+
 public:
     /**
      *  Constructor
      */
-    Isolate();
+    Isolate()
+    {
+        // we need an allocator
+        _params.array_buffer_allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+        
+        // construct the isolate
+        _isolate = v8::Isolate::New(_params);
+    }
+    
+    /**
+     *  No copying
+     *  @param  that
+     */
+    Isolate(const Isolate &that) = delete;
 
     /**
      *  Destructor
      */
-    ~Isolate();
+    virtual ~Isolate()
+    {
+        // free up the isolate
+        _isolate->Dispose();
+        
+        // free up allocator
+        delete _params.array_buffer_allocator;
+    }
 
     /**
      *  Schedule a task to be executed
@@ -72,26 +99,29 @@ public:
      *  @param  task    The task to execute
      *  @param  delay   Number of seconds to wait before executing
      */
-    static void scheduleTask(v8::Isolate *isolate, v8::Task *task, double delay);
+    //static void scheduleTask(v8::Isolate *isolate, v8::Task *task, double delay);
 
     /**
      *  Get the isolate for this thread
      *
      *  @return The thread-local isolate instance
      */
-    static v8::Isolate *get();
+    //static v8::Isolate *get();
 
     /**
      *  Clean up the isolate - if any - for this thread
      */
-    static void destroy();
+    //static void destroy();
 
     /**
      *  Cast to the underlying isolate
-     *
      *  @return v8::Isolate*
      */
-    operator v8::Isolate* () const;
+    operator v8::Isolate* () const
+    {
+        // expose underlying pointer
+        return _isolate;
+    }
 };
 
 /**

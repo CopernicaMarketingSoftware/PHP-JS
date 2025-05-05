@@ -37,6 +37,7 @@ private:
      *  @var    Stack<v8::ObjectTemplate>
      */
     Stack<v8::ObjectTemplate> _template;
+
 public:
     /**
      *  Constructor

@@ -9,6 +9,8 @@
  *  @copyright 2015 Copernica B.V.
  */
 
+#if false
+
 /**
  *  Dependencies
  */
@@ -65,6 +67,9 @@ static void enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
     // create a new array to store all the properties
     v8::Local<v8::Array>    properties(v8::Array::New(Isolate::get()));
 
+    // we need the context
+    auto context = Isolate::get()->GetCurrentContext();
+
     // there is no 'push' method on v8::Array, so we simply have
     // to 'Set' the property with the correct index, declared here
     uint32_t index = 0;
@@ -73,7 +78,7 @@ static void enumerator(const v8::PropertyCallbackInfo<v8::Array> &info)
     for (auto &property : *handle)
     {
         // add the property to the list
-        properties->Set(index++, value(property.first));
+        properties->Set(context, index++, value(property.first)).Check();
     }
 
     // set the value as the 'return' parameter
@@ -118,7 +123,7 @@ static void getter(v8::Local<v8::String> property, const v8::PropertyCallbackInf
 
     // retrieve handle to the original object and the property name
     Handle                  handle(info.Data());
-    v8::String::Utf8Value   name(property);
+    v8::String::Utf8Value   name(Isolate::get(), property);
 
     // check if the property exists
     if (handle->contains(*name, name.length()))
@@ -165,7 +170,7 @@ static void setter(v8::Local<v8::String> property, v8::Local<v8::Value> input, c
 {
     // retrieve handle to the original object and convert the requested property
     Handle                  handle(info.Data());
-    v8::String::Utf8Value   name(property);
+    v8::String::Utf8Value   name(Isolate::get(), property);
 
     // store the property inside the array
     handle->set(*name, name.length(), value(input));
@@ -176,12 +181,32 @@ static void setter(v8::Local<v8::String> property, v8::Local<v8::Value> input, c
  *
  *  @param  array   The array to wrap
  */
-Array::Array(Php::Array array) :
-    _template(v8::ObjectTemplate::New())
+Array::Array(Php::Array array) : _template(v8::ObjectTemplate::New(Isolate::get()))
 {
-    // register the property handlers
-    _template->SetNamedPropertyHandler(getter, setter, nullptr, nullptr, enumerator, Handle(array));
-    _template->SetIndexedPropertyHandler(getter, setter, nullptr, nullptr, nullptr, Handle(array));
+    // get isolate and context
+    v8::Isolate* isolate = Isolate::get();
+    v8::HandleScope handlescope(isolate);
+
+    // create a function-template
+    v8::Local<v8::ObjectTemplate> tpl = v8::ObjectTemplate::New(isolate);
+
+    // we need the template on which we can install the handlers
+    v8::Local<v8::ObjectTemplate> inst = tpl->InstanceTemplate();
+
+    // set the named property handler (like obj.foo)
+    inst->SetHandler(v8::NamedPropertyHandlerConfiguration(
+        getter, setter, nullptr, nullptr, enumerator,
+        Handle(array)
+    ));
+
+    // set the indexed property handler (like obj[0])
+    inst->SetHandler(v8::IndexedPropertyHandlerConfiguration(
+        getter, setter, nullptr, nullptr, nullptr,
+        Handle(array)
+    ));
+
+    // store in the member
+    _template.Reset(isolate, tpl);
 }
 
 /**
@@ -200,3 +225,5 @@ Array::operator v8::Local<v8::Value> ()
  *  End namespace
  */
 }
+
+#endif

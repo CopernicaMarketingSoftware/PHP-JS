@@ -1,17 +1,20 @@
 /**
  *  jsobject.cpp
  *
- *  Class that wraps around an ecmascript object
- *  and makes it available to PHP userspace.
+ *  Class that wraps around an ecmascript object and makes it available to PHP userspace.
  *
- *  @copyright 2015 Copernica B.V.
+ *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
+ *  @copyright 2015 - 2025 Copernica B.V.
  */
 
 /**
  *  Dependencies
  */
 #include "jsobject.h"
-#include "value.h"
+#include "scope.h"
+#include "fromphp.h"
+#include "tophp.h"
+#include "jsiterator.h"
 
 /**
  *  Start namespace
@@ -20,145 +23,84 @@ namespace JS {
 
 /**
  *  Constructor
- *
- *  @param  base    The base that PHP-CPP insists on
- *  @param  object  The object to iterate
+ *  @param  context     The context
+ *  @param  object      The ecmascript object
  */
-JSObject::Iterator::Iterator(Php::Base *base, const Stack<v8::Object> &object) :
-    Php::Iterator(base),
-    _object(object),
-    _position(0)
-{
-    // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(Isolate::get());
-    v8::Context::Scope      context(object->CreationContext());
-
-    // assign variables, this would normally be done inside
-    // the initializer list, but that way we can't create a
-    // HandleScope first and v8 refuses to work without one
-    _keys   = _object->GetPropertyNames();
-    _size   = _keys->Length();
-}
+JSObject::JSObject(const std::shared_ptr<Context> &context, const v8::Local<v8::Object> &object) :
+    _context(context),
+    _object(_context->isolate(), object) {}
 
 /**
- *  Is the iterator still valid?
- *
- *  @return is an element present at the current offset
+ *  Destructor
  */
-bool JSObject::Iterator::valid()
+JSObject::~JSObject()
 {
-    // we should not be out of bounds
-    return _position < _size;
+    // forget the associated javascript object
+    _object.Reset();
 }
-
-/**
- *  Retrieve the current value
- *
- *  @return value at current offset
- */
-Php::Value JSObject::Iterator::current()
-{
-    // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(Isolate::get());
-    v8::Context::Scope      context(_object->CreationContext());
-
-    // retrieve the current key, the value and convert it
-    return value(_object->Get(_keys->Get(_position)));
-}
-
-/**
- *  Retrieve the current key
- *
- *  @return the current key
- */
-Php::Value JSObject::Iterator::key()
-{
-    // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(Isolate::get());
-    v8::Context::Scope      context(_object->CreationContext());
-
-    // retrieve the current key and convert it
-    return value(_keys->Get(_position));
-}
-
-/**
- *  Move ahead to the next item
- */
-void JSObject::Iterator::next()
-{
-    // move to the next position
-    ++_position;
-}
-
-/**
- *  Start over at the beginning
- */
-void JSObject::Iterator::rewind()
-{
-    // move back to the beginning
-    _position = 0;
-}
-
-/**
- *  Constructor
- *
- *  @param  object  The ecmascript object
- */
-JSObject::JSObject(v8::Handle<v8::Object> object) :
-    _object(object)
-{}
 
 /**
  *  Retrieve a property
- *
  *  @param  name    Name of the property
  *  @return The requested property
  */
 Php::Value JSObject::__get(const Php::Value &name) const
 {
-    // create a handle scope, so variables "fall out of scope", "enter" the context and retrieve the property
-    v8::HandleScope         scope(Isolate::get());
-    v8::Context::Scope      context(_object->CreationContext());
-    v8::Local<v8::Value>    property(_object->Get(value(name)));
-
+    // scope for the call
+    Scope scope(_context);
+    
+    // get the object in a local variable
+    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
+    
+    // get the property value
+    auto property = object->Get(scope, FromPhp(_context->isolate(), name));
+    
     // if it does not exist, we fall back on the default behavior
+    // @todo consider better error handling
     if (property.IsEmpty()) return Php::Base::__get(name);
 
     // convert the value to a PHP value
-    return value(property);
+    return ToPhp(_context, property.ToLocalChecked());
 }
 
 /**
  *  Change a property
- *
  *  @param  name        Name of the property
  *  @param  property    New value for the property
  */
 void JSObject::__set(const Php::Value &name, const Php::Value &property)
 {
-    // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(Isolate::get());
-    v8::Context::Scope      context(_object->CreationContext());
+    // scope for the call
+    Scope scope(_context);
 
-    // convert the value to a ecmascript value and store it
-    _object->Set(value(name), value(property));
+    // get the object in a local variable
+    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
+    
+    // convert the value to a ecmascript value and store it (we explicitly want to ignore the return-value)
+    __attribute__((unused)) auto result = object->Set(scope, FromPhp(_context->isolate(), name), FromPhp(_context->isolate(), property));
 }
 
 /**
  *  Check if a property is set
- *
  *  @param  name        Name of the property
  *  @return Is the property set
  */
 bool JSObject::__isset(const Php::Value &name)
 {
-    // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(Isolate::get());
-    v8::Context::Scope      context(_object->CreationContext());
+    // scope for the call
+    Scope scope(_context);
+
+    // get the object in a local variable
+    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
 
     // check if the object has the requested property
-    return _object->Has(value(name));
+    auto result = object->Has(scope, FromPhp(_context->isolate(), name));
+    
+    // check for success
+    return result.IsJust() && result.FromJust();
 }
+
+#if false
 
 /**
  *  Call a function
@@ -188,45 +130,48 @@ Php::Value JSObject::__call(const char *name, Php::Parameters &params)
     return value(function->Call(static_cast<v8::Local<v8::Object>>(_object), input.size(), input.data()));
 }
 
+#endif
+
 /**
  *  Cast to a string
- *
  *  @return The result of the string conversion
  */
 Php::Value JSObject::__toString()
 {
-    // create a handle scope, so variables "fall out of scope" and "enter" the context
-    v8::HandleScope         scope(Isolate::get());
-    v8::Context::Scope      context(_object->CreationContext());
+    // scope for the call
+    Scope scope(_context);
+
+    // get the object in a local variable
+    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
 
     // convert to string and then to php
-    return value(_object->ToString());
+    auto result = object->ToString(scope);
+    
+    // if not set
+    if (result.IsEmpty()) return nullptr;
+    
+    // convert to php space
+    return ToPhp(_context, result.ToLocalChecked());
 }
 
 /**
  *  Retrieve the iterator
- *
  *  @return The iterator
  */
 Php::Iterator *JSObject::getIterator()
 {
-    // create a new iterator instance
-    // it is cleaned up by PHP-CPP
-    return new Iterator(this, _object);
-}
+    // scope for the call
+    Scope scope(_context);
 
-/**
- *  Retrieve the original ecmascript value
- *
- *  @return original ecmascript value
- */
-v8::Local<v8::Object> JSObject::object() const
-{
-    // the stack has the original object
-    return _object;
+    // get the object in a local variable
+    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
+
+    // create a new iterator instance, cleaned up by PHP-CPP
+    return new JSIterator(this, _context, object);
 }
 
 /**
  *  End namespace
  */
 }
+

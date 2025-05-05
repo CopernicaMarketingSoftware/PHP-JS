@@ -1,124 +1,132 @@
 /**
- *  value.cpp
- *
- *  Simple value casting functions for casting values
- *  between php and ecmascript runtime values.
- *
- *  @copyright 2015 Copernica B.V.
+ *  ToPhp.cpp
+ * 
+ *  Implementation file to convert a v8/javascript variable into its
+ *  PHP counterpart
+ * 
+ *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
+ *  @copyright 2025 Copernica BV
  */
- 
-#if false
 
 /**
  *  Dependencies
  */
-#include "value.h"
-#include "isolate.h"
-#include "handle.h"
-#include "object.h"
-#include "array.h"
+#include "tophp.h"
 #include "jsobject.h"
+#include "context.h"
+#include "linker.h"
+#include "phparray.h"
+
+
+#include <iostream>
 
 /**
- *  Start namespace
+ *  Begin of namespace
  */
 namespace JS {
 
 /**
- *  Callback function to be used when invoking functions
- *  defined from the PHP side
- *
- *  @param  info    callback information
+ *  Constructor
+ *  @param  context
+ *  @param  input
  */
-static void callback(const v8::FunctionCallbackInfo<v8::Value> &info)
+ToPhp::ToPhp(const std::shared_ptr<Context> &context, const v8::Local<v8::Value> &input)
 {
-    // create a local handle, so properties "fall out of scope"
-    v8::HandleScope     scope(Isolate::get());
+    // if we received an invalid input we simply keep empty PHP value
+    if (input.IsEmpty() || input->IsNull() || input->IsUndefined()) return;
 
-    // retrieve handle to the original object
-    Handle              handle(info.Data());
-
-    // an array to hold all the arguments
-    Php::Array arguments;
-
-    // add all the arguments
-    for (int i = 0; i < info.Length(); ++i) arguments.set(i, value(info[i]));
-
-    // catch any exceptions the PHP code might throw
-    try
+    // check for boolean true/false or a javascript "Boolean" instance
+    if (input->IsBoolean() || input->IsBooleanObject()) 
     {
-        // now execute the function
-        Php::Value result(Php::call("call_user_func_array", handle, arguments));
+        // convert the value to a boolean
+        v8::Local<v8::Boolean> value(v8::Local<v8::Boolean>::Cast(input));
 
-        // cast the value and set it as return parameter
-        info.GetReturnValue().Set(value(result));
+        // expose the value
+        _value = value->Value();
     }
-    catch (const Php::Exception& exception)
+    else if (input->IsInt32())
     {
-        // pass the exception on to javascript userspace
-        Isolate::get()->ThrowException(v8::Exception::Error(v8::String::NewFromUtf8(Isolate::get(), exception.what())));
+        // convert the value to an int32
+        v8::Local<v8::Int32> value(v8::Local<v8::Int32>::Cast(input));
+
+        // expose the value
+        _value = value->Value();
     }
-}
-
-/**
- *  Cast a PHP runtime value to an ecmascript value
- *
- *  @param  input   the value to cast
- *  @return v8::Handle<v8::Value>
- */
-v8::Handle<v8::Value> value(const Php::Value &input)
-{
-    // create a handle that we can return a value from
-    v8::EscapableHandleScope    scope(Isolate::get());
-
-    // the result value we are assigning
-    v8::Local<v8::Value>        result;
-
-    // are we dealing with a value originally from ecmascript?
-    if (input.instanceOf("JS\\Object"))
+    else if (input->IsNumber() || input->IsNumberObject())
     {
-        // cast the input to the original object
-        result = static_cast<JSObject*>(input.implementation())->object();
+        // convert the value to a number
+        v8::Local<v8::Number> value(v8::Local<v8::Number>::Cast(input));
+        
+        // expose the value
+        _value = value->Value();
     }
-    else
+    else if (input->IsString())
     {
-        // the value can be of many types
-        switch (input.type())
-        {
-            case Php::Type::Null:       result = v8::Null(Isolate::get());                                                          break;
-            case Php::Type::Numeric:    result = v8::Integer::New(Isolate::get(), input);                                           break;
-            case Php::Type::Float:      result = v8::Number::New(Isolate::get(), input);                                            break;
-            case Php::Type::Bool:       result = v8::Boolean::New(Isolate::get(), input);                                           break;
-            case Php::Type::String:     result = v8::String::NewFromUtf8(Isolate::get(), input);                                    break;
-            case Php::Type::Object:     result = Object(input);                                                                     break;
-            case Php::Type::Callable:   result = v8::FunctionTemplate::New(Isolate::get(), callback, Handle(input))->GetFunction(); break;
-            case Php::Type::Array:      result = Array(input);                                                                      break;
-            default:
-                // php 7 does not return the Bool type anymore, but rather True and False
-                // types, which would not compile with our legacy code, so we check if it
-                // is boolean here again, using a function that works identically for both
-                if (input.isBool())  result = v8::Boolean::New(Isolate::get(), input);
-                break;
-        }
+        // convert input to a string
+        v8::Local<v8::String> value(v8::Local<v8::String>::Cast(input));
+
+        // convert to 
+        v8::String::Utf8Value utf8(context->isolate(), value);
+        
+        // expose to the php value
+        _value = Php::Value(*utf8, utf8.length());
+    }
+    else if (input->IsStringObject())
+    {
+        // convert input to a string
+        v8::Local<v8::StringObject> value(v8::Local<v8::StringObject>::Cast(input));
+
+        // convert to 
+        v8::String::Utf8Value utf8(context->isolate(), value);
+        
+        // expose to the php value
+        _value = Php::Value(*utf8, utf8.length());
+    }
+    else if (input->IsRegExp())
+    {
+        // convert input to a regexp
+        v8::Local<v8::RegExp> value(v8::Local<v8::RegExp>::Cast(input));
+
+        // convert to 
+        v8::String::Utf8Value utf8(context->isolate(), value);
+        
+        // expose to the php value
+        _value = Php::Value(*utf8, utf8.length());
+    }
+    else if (input->IsFunction())
+    {
+        // @todo to be implemented
+        
+    }
+    else if (input->IsArray())
+    {
+        // @todo this is a new option, previously handled via IsObject, maybe add feature-flag?
+        
+        
+        // convert input to a string
+        v8::Local<v8::Array> value(v8::Local<v8::Array>::Cast(input));
+
+        // we have a helper class for filling arrays
+        _value = PhpArray(context, value);
+    }
+    else if (input->IsObject())
+    {
+        // retrieve the object
+        auto object = input.As<v8::Object>();
+
+        // use a linker to check if the object was already associated with a php::value
+        Linker linker(context->isolate(), context->symbol(), object);
+        
+        // if already linked
+        if (linker.valid()) _value = linker.value();
+
+        // otherwise we associate the object now
+        else _value = linker.attach(Php::Object("JS\\Object", new JSObject(context, object)));
     }
 
-    // return the value by "escaping" it
-    return scope.Escape(result);
-}
 
-/**
- *  Cast an ecmascript value to a PHP runtime value
- *
- *  @note   The value cannot be const, as retrieving properties
- *          from arrays and objects cannot be done on const values
- *
- *  @param  input   the value to cast
- *  @return Php::Value
- */
-Php::Value value(v8::Handle<v8::Value> input)
-{
-    // if we received an invalid input we simply return an empty PHP value
-    if (input.IsEmpty())            return nullptr;
+
+    /*
 
     // as is typical in javascript, a value can be of many types
     // check the type of value that we have received so we can cast
@@ -220,11 +228,13 @@ Php::Value value(v8::Handle<v8::Value> input)
 
     // we sadly don't support this type of value
     return nullptr;
+    
+    */
 }
 
 /**
- *  End namespace
+ *  End of namespace
  */
 }
 
-#endif
+

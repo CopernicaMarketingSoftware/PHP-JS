@@ -8,6 +8,8 @@
  *  @copyright 2015 Copernica B.V.
  */
 
+#if false
+
 /**
  *  Dependencies
  */
@@ -317,3 +319,5 @@ double Platform::MonotonicallyIncreasingTime()
  *  End namespace
  */
 }
+
+#endif
