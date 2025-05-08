@@ -302,7 +302,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
     if (contains && !method_exists)
     {
         // get the object property value
-        FromPhp value(_isolate, object.get(*name, name.length()));
+        FromPhp value(_context.lock(), object.get(*name, name.length()));
         
         // convert it to a javascript handle and return it
         info.GetReturnValue().Set(v8::Global<v8::Value>(_isolate, value.local()));
@@ -316,7 +316,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
     else if (object.instanceOf("ArrayAccess") && object.call("offsetExists", *name))
     {
         // get the object property value
-        FromPhp value(_isolate, object.call("offsetGet", *name));
+        FromPhp value(_context.lock(), object.call("offsetGet", *name));
 
         // use the array access to retrieve the property
         info.GetReturnValue().Set(v8::Global<v8::Value>(_isolate, value.local()));
@@ -364,7 +364,7 @@ v8::Intercepted ObjectTemplate::getIndex(unsigned index, const v8::PropertyCallb
     if (!object.call("offsetExists", static_cast<int64_t>(index))) return v8::Intercepted::kNo;
 
     // make the call
-    FromPhp value(_isolate, object.call("offsetGet", static_cast<int64_t>(index)));
+    FromPhp value(_context.lock(), object.call("offsetGet", static_cast<int64_t>(index)));
 
     // set the result
     info.GetReturnValue().Set(v8::Global<v8::Value>(_isolate, value.local()));
@@ -462,7 +462,7 @@ void ObjectTemplate::enumerateProperties(const v8::PropertyCallbackInfo<v8::Arra
         if (!property.first.isString()) continue;
 
         // add the property to the list
-        auto result = properties->Set(_isolate->GetCurrentContext(), index++, FromPhp(_isolate, property.first));
+        auto result = properties->Set(_isolate->GetCurrentContext(), index++, FromPhp(_context.lock(), property.first));
         
         // leap out on error
         if (!result.IsJust() || !result.FromJust()) return;

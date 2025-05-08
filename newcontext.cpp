@@ -102,7 +102,7 @@ Php::Value Context::assign(const Php::Value &name, const Php::Value &value, cons
     //}
 
     // and store the value
-    v8::Maybe<bool> result = global->Set(context, FromPhp(_isolate, name), FromPhp(_isolate, value));
+    v8::Maybe<bool> result = global->Set(context, FromPhp(shared_from_this(), name), FromPhp(shared_from_this(), value));
     
     // check for success
     return result.IsJust() && result.FromJust();

@@ -19,11 +19,14 @@ namespace JS {
 
 /**
  *  Constructor
- *  @param  isolate
+ *  @param  context
  *  @param  value
  */
-FromPhp::FromPhp(v8::Isolate *isolate, const Php::Value &value)
+FromPhp::FromPhp(const std::shared_ptr<Context> &context, const Php::Value &value)
 {
+    // we need the isolate
+    auto *isolate = context->isolate();
+    
     // check the type
     switch (value.type()) {
     case Php::Type::Null:       _value = v8::Null(isolate); return;

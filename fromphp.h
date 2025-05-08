@@ -17,6 +17,7 @@
  */
 #include <v8.h>
 #include <phpcpp.h>
+#include "context.h"
 
 /**
  *  Begin of namespace
@@ -38,10 +39,10 @@ private:
 public:
     /**
      *  Constructor
-     *  @param  isolate
+     *  @param  context
      *  @param  value
      */
-    FromPhp(v8::Isolate *isolate, const Php::Value &value);
+    FromPhp(const std::shared_ptr<Context> &context, const Php::Value &value);
     
     /**
      *  Destructor
