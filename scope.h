@@ -64,6 +64,16 @@ public:
         _hscope(context->isolate()),
         _context(context->context(_hscope)),
         _cscope(_context) {}
+
+    /**
+     *  Constructor
+     *  @param  isolate
+     */
+    Scope(v8::Isolate *isolate) :
+        _iscope(isolate),
+        _hscope(isolate),
+        _context(isolate->GetCurrentContext()),
+        _cscope(_context) {}
     
     /**
      *  Destructor

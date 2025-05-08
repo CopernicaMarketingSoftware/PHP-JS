@@ -12,6 +12,7 @@
  */
 #include "linker.h"
 #include "link.h"
+#include "context.h"
 
 /**
  *  Begin of namespace
@@ -26,6 +27,14 @@ namespace JS {
  */
 Linker::Linker(v8::Isolate *isolate, const v8::Global<v8::Private> &key, const v8::Local<v8::Object> &object) :
     _isolate(isolate), _key(key.Get(isolate)), _object(object) {}
+
+/**
+ *  Constructor
+ *  @param  context     the context
+ *  @param  object      the javascript object to be linked
+ */
+Linker::Linker(const std::shared_ptr<Context> &context, const v8::Local<v8::Object> &object) :
+    Linker(context->isolate(), context->symbol(), object) {}
 
 /**
  *  Get the internal pointer

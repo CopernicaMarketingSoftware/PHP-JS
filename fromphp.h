@@ -49,11 +49,16 @@ public:
     virtual ~FromPhp() = default;
     
     /**
-     *  Cast to a value
-     *  @return b8::Local<v8::Value>
+     *  Expose the local value
+     *  @return  v8::Local<v8::Value>
+     */
+    const v8::Local<v8::Value> &local() const { return _value; }
+    
+    /**
+     *  Cast to a local value
+     *  @return v8::Local<v8::Value>
      */
     operator const v8::Local<v8::Value>& () const { return _value; }
-    
 };
     
 /**

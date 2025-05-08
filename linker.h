@@ -32,6 +32,7 @@ namespace JS {
  *  Forward declarations
  */
 class Link;
+class Context;
 
 /**
  *  Class definition
@@ -71,6 +72,13 @@ public:
      *  @param  object      the javascript object to be linked
      */
     Linker(v8::Isolate *isolate, const v8::Global<v8::Private> &key, const v8::Local<v8::Object> &object);
+
+    /**
+     *  Constructor
+     *  @param  context     the context
+     *  @param  object      the javascript object to be linked
+     */
+    Linker(const std::shared_ptr<Context> &context, const v8::Local<v8::Object> &object);
     
     /**
      *  No copying

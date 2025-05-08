@@ -118,7 +118,7 @@ public:
      *  Expose the context
      *  Watch out: a handling-scope must be passed to prove that is exists
      *  @param  scope
-     *  @return v8::Global<v8::Context>
+     *  @return v8::Local<v8::Context>
      */
     v8::Local<v8::Context> context(const v8::HandleScope &scope) { return _context.Get(_isolate); }
 
