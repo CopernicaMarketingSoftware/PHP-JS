@@ -36,10 +36,11 @@ FromPhp::FromPhp(const std::shared_ptr<Context> &context, const Php::Value &valu
     case Php::Type::True:       _value = v8::Boolean::New(isolate, true); return;
     case Php::Type::False:      _value = v8::Boolean::New(isolate, false); return;
     case Php::Type::String:     _value = v8::String::NewFromUtf8(isolate, value).ToLocalChecked(); return;
+    case Php::Type::Object:     _value = context->wrap(value); return;
     default: break;
     }
 
-    // @todo implementation for array, object and callable
+    // @todo implementation for array and callable
 }
 
 /**

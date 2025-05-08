@@ -18,6 +18,7 @@
 #include <phpcpp.h>
 #include "newplatform.h"
 #include "isolate.h"
+#include "objecttemplate.h"
 //#include <v8.h>
 //#include "stack.h"
 
@@ -56,7 +57,12 @@ private:
      *  @var v8::Global<v8::Private>
      */
     v8::Global<v8::Private> _symbol;
-    
+
+    /**
+     *  Templates for wrapping objects
+     *  @var std::vector
+     */
+    std::vector<std::unique_ptr<ObjectTemplate>> _prototypes;
 
     /**
      *  The context
@@ -113,6 +119,12 @@ public:
      */
     const v8::Global<v8::Private> &symbol() const { return _symbol; }
     
+    /**
+     *  Wrap a certain PHP object into a javascript object
+     *  @param  object      MUST be an object!
+     *  @return v8::Local<v8::Value>
+     */
+    v8::Local<v8::Value> wrap(const Php::Value &object);
     
     /**
      *  Expose the context

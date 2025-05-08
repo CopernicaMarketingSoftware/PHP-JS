@@ -113,7 +113,7 @@ ObjectTemplate::~ObjectTemplate()
  *  @param  value
  *  @return bool
  */
-bool ObjectTemplate::usable(const Php::Value &value) const
+bool ObjectTemplate::matches(const Php::Value &value) const
 {
     // check whetner the object has certain features
     if (_arrayaccess != value.instanceOf("ArrayAccess")) return false;
@@ -128,14 +128,28 @@ bool ObjectTemplate::usable(const Php::Value &value) const
  *  @param  value
  *  @return v8::Local<v8::Object>
  */
-v8::MaybeLocal<v8::Value> ObjectTemplate::apply(const Php::Value &value)
+v8::Local<v8::Value> ObjectTemplate::apply(const Php::Value &value) const
 {
     // we need the template locally
     v8::Local<v8::ObjectTemplate> tpl(_template.Get(_isolate));
     
     // construct a new instance
-    // @todo associate PHP object with the instance
-    return tpl->NewInstance(_isolate->GetCurrentContext());
+    auto result = tpl->NewInstance(_isolate->GetCurrentContext());
+    
+    // if not valid
+    if (result.IsEmpty()) return v8::Undefined(_isolate);
+
+    // the actual ojbect
+    auto object = result.ToLocalChecked();
+
+    // object to link the two objects together
+    Linker linker(_context.lock(), object);
+    
+    // attach the objects
+    linker.attach(value);
+
+    // get the object
+    return result.ToLocalChecked();
 }
 
 /**

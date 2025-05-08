@@ -182,14 +182,14 @@ public:
      *  @param  value
      *  @return bool
      */
-    bool usable(const Php::Value &value) const;
+    bool matches(const Php::Value &value) const;
 
     /**
      *  Apply the template on a PHP variable, to turn it into a JS object
      *  @param  value
-     *  @return v8::MaybeLocal<v8::Object>
+     *  @return v8::Local<v8::Object>
      */
-    v8::MaybeLocal<v8::Value> apply(const Php::Value &value);
+    v8::Local<v8::Value> apply(const Php::Value &value) const;
 };
     
 /**

@@ -62,6 +62,30 @@ void Context::release()
 }
 
 /**
+ *  Wrap a certain PHP object into a javascript object
+ *  @param  object      MUST be an object!
+ *  @return v8::Local<v8::Value>
+ */
+v8::Local<v8::Value> Context::wrap(const Php::Value &object)
+{
+    // check the prototypes that we have
+    for (auto &prototype : _prototypes)
+    {
+        // is this one compatible with the object
+        if (!prototype->matches(object)) continue;
+        
+        // we can apply this prototype
+        return prototype->apply(object);
+    }
+    
+    // we need a new prototype
+    _prototypes.emplace_back(new ObjectTemplate(shared_from_this(), object));
+    
+    // use it
+    return _prototypes.back()->apply(object);
+}
+
+/**
  *  Assign a variable to the javascript context
  *  @param  name        name of property to assign  required
  *  @param  value       value to be assigned
