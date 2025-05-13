@@ -43,10 +43,10 @@ private:
     {
     private:
         /**
-         *  Reference to the context
-         *  @var std::shared_ptr<Context>
+         *  Reference to the isolate
+         *  @var v8::Isolate
          */
-        std::shared_ptr<Context> _context;
+        v8::Isolate *_isolate;
 
         /**
          *  The PHP space Iterator object
@@ -57,11 +57,11 @@ private:
     public:
         /**
          *  Constructor
-         *  @param  context
+         *  @param  isolate
          *  @param  iterator
          */
-        Data(const std::shared_ptr<Context> &context, const Php::Value &value) :
-            _context(context), _value(value) {}
+        Data(v8::Isolate *isolate, const Php::Value &value) :
+            _isolate(isolate), _value(value) {}
             
         /**
          *  Destructor
@@ -90,7 +90,7 @@ private:
          *  Get the current value
          *  @return v8::Local
          */
-        v8::Local<v8::Value> current() { return FromPhp(_context->isolate(), _value.call("current")); }
+        v8::Local<v8::Value> current() { return FromPhp(_isolate, _value.call("current")); }
         
         /**
          *  Proceed to the next record
@@ -132,10 +132,10 @@ private:
 public:
     /**
      *  Constructor
-     *  @param  conext      the context
+     *  @param  isolate     the isolate
      *  @param  value       iterable php object
      */
-    Iterator(const std::shared_ptr<Context> &context, const Php::Value &value);
+    Iterator(v8::Isolate *isolate, const Php::Value &value);
 
     /**
      *  Private destructor (object is self-destructing)

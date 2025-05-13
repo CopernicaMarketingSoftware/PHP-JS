@@ -320,7 +320,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
             Php::Value object = Linker(_isolate, info.This()).value();
             
             // create an iterator
-            Iterator iter(Context::upgrade(_isolate), object);
+            Iterator iter(_isolate, object);
 
             // use the array access to retrieve the property
             info.GetReturnValue().Set(v8::Global<v8::Value>(_isolate, iter.value()));
