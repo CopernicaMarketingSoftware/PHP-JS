@@ -44,10 +44,10 @@ private:
 public:
     /**
      *  Constructor
-     *  @param  context
+     *  @param  isolate
      *  @param  value
      */
-    ToPhp(const std::shared_ptr<Context> &context, const v8::Handle<v8::Value> &value);
+    ToPhp(v8::Isolate *isolate, const v8::Handle<v8::Value> &value);
     
     /**
      *  Destructor

@@ -88,7 +88,7 @@ Php::Value JSIterator::current()
     if (key.IsEmpty()) return nullptr;
     
     // expose to php space
-    return ToPhp(_context, value.ToLocalChecked());
+    return ToPhp(_context->isolate(), value.ToLocalChecked());
 }
 
 /**
@@ -108,7 +108,7 @@ Php::Value JSIterator::key()
     if (key.IsEmpty()) return nullptr;
     
     // retrieve the current key, the value and convert it
-    return ToPhp(_context, key.ToLocalChecked());
+    return ToPhp(_context->isolate(), key.ToLocalChecked());
 }
 
 /**

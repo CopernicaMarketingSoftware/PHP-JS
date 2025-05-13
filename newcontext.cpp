@@ -185,7 +185,7 @@ Php::Value Context::evaluate(const Php::Value &script, const Php::Value &timeout
     
     
     // expose result to php
-    return ToPhp(shared_from_this(), result.ToLocalChecked());
+    return ToPhp(_isolate, result.ToLocalChecked());
 
     /*
 

@@ -158,7 +158,7 @@ v8::Local<v8::Value> ObjectTemplate::apply(const Php::Value &value) const
     if (!value.isObject()) return object;
 
     // object to link the two objects together
-    Linker linker(Context::upgrade(_isolate), object);
+    Linker linker(_isolate, object);
     
     // attach the objects
     linker.attach(value);
@@ -317,7 +317,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
             std::cout << "It's an interator" << std::endl;
 
             // the object that is being accessed
-            Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
+            Php::Value object = Linker(_isolate, info.This()).value();
             
             // create an iterator
             Iterator iter(Context::upgrade(_isolate), object);
@@ -339,7 +339,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
     
     
     // the object that is being accessed
-    Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
+    Php::Value object = Linker(_isolate, info.This()).value();
     
     // convert to a utf8value to get the actual c-string
     v8::String::Utf8Value name(_isolate, property.As<v8::String>());
@@ -439,7 +439,7 @@ v8::Intercepted ObjectTemplate::getIndex(unsigned index, const v8::PropertyCallb
     std::cout << "ObjectTemplate::getIndex" << std::endl;
 
     // the object that is being accessed
-    Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
+    Php::Value object = Linker(_isolate, info.This()).value();
     
     // is the underlying variable an array?
     if (object.isArray() && object.contains(index))
@@ -485,14 +485,14 @@ v8::Intercepted ObjectTemplate::setProperty(v8::Local<v8::Name> property, v8::Lo
     // @todo check implementation for arrays
     
     // the object that is being accessed
-    Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
+    Php::Value object = Linker(_isolate, info.This()).value();
 
     // We are calling into PHP space so we need to catch all exceptions
     // @todo why do we not have such try/catch blocks in other calls?
     try
     {
         // make the call
-        object.call("offsetSet", ToPhp(Context::upgrade(_isolate), property), ToPhp(Context::upgrade(_isolate), input));
+        object.call("offsetSet", ToPhp(_isolate, property), ToPhp(_isolate, input));
     }
     catch (const Php::Exception& exception)
     {
@@ -520,14 +520,14 @@ v8::Intercepted ObjectTemplate::setIndex(unsigned index, v8::Local<v8::Value> in
     std::cout << "ObjectTemplate::setIndex" << std::endl;
 
     // the object that is being accessed
-    Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
+    Php::Value object = Linker(_isolate, info.This()).value();
 
     // We are calling into PHP space so we need to catch all exceptions
     // @todo why do we not have such try/catch blocks in other calls?
     try
     {
         // the variable to set
-        ToPhp value(Context::upgrade(_isolate), input);
+        ToPhp value(_isolate, input);
         
         // if the underlying variable is an array
         if (object.isArray()) object.set(static_cast<int64_t>(index), value);
@@ -563,7 +563,7 @@ void ObjectTemplate::enumerateProperties(const v8::PropertyCallbackInfo<v8::Arra
     
     
     // the object that is being accessed
-    Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
+    Php::Value object = Linker(_isolate, info.This()).value();
 
     // create a new array to store all the properties
     v8::Local<v8::Array> properties(v8::Array::New(_isolate));

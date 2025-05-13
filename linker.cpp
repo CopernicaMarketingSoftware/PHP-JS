@@ -30,11 +30,11 @@ Linker::Linker(v8::Isolate *isolate, const v8::Global<v8::Private> &key, const v
 
 /**
  *  Constructor
- *  @param  context     the context
+ *  @param  isolage     the isolate
  *  @param  object      the javascript object to be linked
  */
-Linker::Linker(const std::shared_ptr<Context> &context, const v8::Local<v8::Object> &object) :
-    Linker(context->isolate(), context->symbol(), object) {}
+Linker::Linker(v8::Isolate *isolate, const v8::Local<v8::Object> &object) :
+    Linker(isolate, Context::upgrade(isolate)->symbol(), object) {}
 
 /**
  *  Get the internal pointer

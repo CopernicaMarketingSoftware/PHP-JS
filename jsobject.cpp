@@ -23,12 +23,12 @@ namespace JS {
 
 /**
  *  Constructor
- *  @param  context     The context
+ *  @param  isolate     The isolate
  *  @param  object      The ecmascript object
  */
-JSObject::JSObject(const std::shared_ptr<Context> &context, const v8::Local<v8::Object> &object) :
-    _context(context),
-    _object(_context->isolate(), object) {}
+JSObject::JSObject(v8::Isolate *isolate, const v8::Local<v8::Object> &object) :
+    _context(Context::upgrade(isolate)),
+    _object(isolate, object) {}
 
 /**
  *  Destructor
@@ -60,7 +60,7 @@ Php::Value JSObject::__get(const Php::Value &name) const
     if (property.IsEmpty()) return Php::Base::__get(name);
 
     // convert the value to a PHP value
-    return ToPhp(_context, property.ToLocalChecked());
+    return ToPhp(_context->isolate(), property.ToLocalChecked());
 }
 
 /**
@@ -144,7 +144,7 @@ Php::Value JSObject::__call(const char *name, Php::Parameters &params)
     auto result = method->Call(scope, object, args.size(), args.data());
     
     // on success
-    if (!result.IsEmpty()) return ToPhp(_context, result.ToLocalChecked());
+    if (!result.IsEmpty()) return ToPhp(_context->isolate(), result.ToLocalChecked());
     
     // a failure took place
     // @todo should we be capturing exceptions?
@@ -194,7 +194,7 @@ Php::Value JSObject::__toString()
     if (result.IsEmpty()) return nullptr;
     
     // convert to php space
-    return ToPhp(_context, result.ToLocalChecked());
+    return ToPhp(_context->isolate(), result.ToLocalChecked());
 }
 
 /**

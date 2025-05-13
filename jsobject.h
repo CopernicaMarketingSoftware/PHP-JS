@@ -36,7 +36,9 @@ class JSObject : public Php::Base, public Php::Traversable
 {
 private:
     /**
-     *  The context in which we operate
+     *  The context in which we operate (this is a shared pointer because for as long as the
+     *  object lives in PHP space, we want to keep the context around (even when the PHP
+     *  space JS\Context already fell out of scope)
      *  @var std::shared_ptr<Context>
      */
     std::shared_ptr<Context> _context;
@@ -50,10 +52,10 @@ private:
 public:
     /**
      *  Constructor
-     *  @param  context     The context
+     *  @param  isolate     The isolate
      *  @param  object      The ecmascript object
      */
-    JSObject(const std::shared_ptr<Context> &context, const v8::Local<v8::Object> &object);
+    JSObject(v8::Isolate *isolate, const v8::Local<v8::Object> &object);
 
     /**
      *  No copying

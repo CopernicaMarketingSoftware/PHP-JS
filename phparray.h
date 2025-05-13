@@ -31,13 +31,13 @@ class PhpArray : public Php::Array
 public:
     /**
      *  Contructor
-     *  @param  context
+     *  @param  isolate
      *  @param  input
      */
-    PhpArray(const std::shared_ptr<Context> &context, const v8::Local<v8::Array> &input)
+    PhpArray(v8::Isolate *isolate, const v8::Local<v8::Array> &input)
     {
         // we need a context
-        auto ctx = context->isolate()->GetCurrentContext();
+        auto ctx = isolate->GetCurrentContext();
 
         // iterate over the input array
         for (uint32_t i = 0; i < input->Length(); ++i)
@@ -51,7 +51,7 @@ public:
             if (element->IsUndefined()) continue;
             
             // set this in the output array
-            set(i, ToPhp(context, element));
+            set(i, ToPhp(isolate, element));
         }
     }
     

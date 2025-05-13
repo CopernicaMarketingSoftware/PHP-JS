@@ -27,10 +27,10 @@ namespace JS {
 
 /**
  *  Constructor
- *  @param  context
+ *  @param  isolate
  *  @param  input
  */
-ToPhp::ToPhp(const std::shared_ptr<Context> &context, const v8::Local<v8::Value> &input)
+ToPhp::ToPhp(v8::Isolate *isolate, const v8::Local<v8::Value> &input)
 {
     // if we received an invalid input we simply keep empty PHP value
     if (input.IsEmpty() || input->IsNull() || input->IsUndefined()) return;
@@ -66,7 +66,7 @@ ToPhp::ToPhp(const std::shared_ptr<Context> &context, const v8::Local<v8::Value>
         v8::Local<v8::String> value(v8::Local<v8::String>::Cast(input));
 
         // convert to 
-        v8::String::Utf8Value utf8(context->isolate(), value);
+        v8::String::Utf8Value utf8(isolate, value);
         
         // expose to the php value
         _value = Php::Value(*utf8, utf8.length());
@@ -77,7 +77,7 @@ ToPhp::ToPhp(const std::shared_ptr<Context> &context, const v8::Local<v8::Value>
         v8::Local<v8::StringObject> value(v8::Local<v8::StringObject>::Cast(input));
 
         // convert to 
-        v8::String::Utf8Value utf8(context->isolate(), value);
+        v8::String::Utf8Value utf8(isolate, value);
         
         // expose to the php value
         _value = Php::Value(*utf8, utf8.length());
@@ -88,7 +88,7 @@ ToPhp::ToPhp(const std::shared_ptr<Context> &context, const v8::Local<v8::Value>
         v8::Local<v8::RegExp> value(v8::Local<v8::RegExp>::Cast(input));
 
         // convert to 
-        v8::String::Utf8Value utf8(context->isolate(), value);
+        v8::String::Utf8Value utf8(isolate, value);
         
         // expose to the php value
         _value = Php::Value(*utf8, utf8.length());
@@ -107,7 +107,7 @@ ToPhp::ToPhp(const std::shared_ptr<Context> &context, const v8::Local<v8::Value>
         v8::Local<v8::Array> value(v8::Local<v8::Array>::Cast(input));
 
         // we have a helper class for filling arrays
-        _value = PhpArray(context, value);
+        _value = PhpArray(isolate, value);
     }
     else if (input->IsObject())
     {
@@ -115,13 +115,13 @@ ToPhp::ToPhp(const std::shared_ptr<Context> &context, const v8::Local<v8::Value>
         auto object = input.As<v8::Object>();
 
         // use a linker to check if the object was already associated with a php::value
-        Linker linker(context->isolate(), context->symbol(), object);
+        Linker linker(isolate, object);
         
         // if already linked
         if (linker.valid()) _value = linker.value();
 
         // otherwise we associate the object now
-        else _value = linker.attach(Php::Object("JS\\Object", new JSObject(context, object)));
+        else _value = linker.attach(Php::Object("JS\\Object", new JSObject(isolate, object)));
     }
 
 
