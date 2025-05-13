@@ -35,13 +35,6 @@ class ObjectTemplate
 {
 protected:
     /**
-     *  The associated context (this is a weak-pointer because the context is our parent,
-     *  holding a reference to *us* so we do not want to keep it in use
-     *  @var std::weak_ptr
-     */
-    std::weak_ptr<Context> _context;
-
-    /**
      *  The isolate to which it belongs
      *  @var v8::Isolate
      */
@@ -57,6 +50,7 @@ protected:
      *  We want to remember which features have been enabled for this template
      *  @var bool
      */
+    bool _realarray = false;
     bool _arrayaccess = false;
     bool _callable = false;
 
@@ -167,10 +161,10 @@ private:
 public:
     /**
      *  Constructor
-     *  @param  context
+     *  @param  isolate
      *  @param  value
      */
-    ObjectTemplate(const std::shared_ptr<Context> &context, const Php::Value &value);
+    ObjectTemplate(v8::Isolate *isolate, const Php::Value &value);
     
     /**
      *  Destructor

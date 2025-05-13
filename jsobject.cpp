@@ -53,7 +53,7 @@ Php::Value JSObject::__get(const Php::Value &name) const
     v8::Local<v8::Object> object(_object.Get(_context->isolate()));
     
     // get the property value
-    auto property = object->Get(scope, FromPhp(_context, name));
+    auto property = object->Get(scope, FromPhp(_context->isolate(), name));
     
     // if it does not exist, we fall back on the default behavior
     // @todo consider better error handling
@@ -77,7 +77,7 @@ void JSObject::__set(const Php::Value &name, const Php::Value &property)
     v8::Local<v8::Object> object(_object.Get(_context->isolate()));
     
     // convert the value to a ecmascript value and store it (we explicitly want to ignore the return-value)
-    __attribute__((unused)) auto result = object->Set(scope, FromPhp(_context, name), FromPhp(_context, property));
+    __attribute__((unused)) auto result = object->Set(scope, FromPhp(_context->isolate(), name), FromPhp(_context->isolate(), property));
 }
 
 /**
@@ -94,7 +94,7 @@ bool JSObject::__isset(const Php::Value &name)
     v8::Local<v8::Object> object(_object.Get(_context->isolate()));
 
     // check if the object has the requested property
-    auto result = object->Has(scope, FromPhp(_context, name));
+    auto result = object->Has(scope, FromPhp(_context->isolate(), name));
     
     // check for success
     return result.IsJust() && result.FromJust();
@@ -137,7 +137,7 @@ Php::Value JSObject::__call(const char *name, Php::Parameters &params)
     for (size_t i = 0; i < params.size(); ++i) 
     {
         // set a parameter
-        args.push_back(FromPhp(_context, params[i]));
+        args.push_back(FromPhp(_context->isolate(), params[i]));
     }
         
     // the result

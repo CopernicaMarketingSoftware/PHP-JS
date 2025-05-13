@@ -16,6 +16,10 @@
 #include "linker.h"
 #include "fromphp.h"
 #include "tophp.h"
+#include "iterator.h"
+
+
+#include <iostream>
 
 /**
  *  Begin of namespace
@@ -55,12 +59,12 @@ static uint32_t findMax(const Php::Value &object)
 
 /**
  *  Constructor
- *  @param  context
+ *  @param  isolate
  *  @param  object
  */
-ObjectTemplate::ObjectTemplate(const std::shared_ptr<Context> &context, const Php::Value &value) : 
-    _context(context),
-    _isolate(context->isolate()),
+ObjectTemplate::ObjectTemplate(v8::Isolate *isolate, const Php::Value &value) : 
+    _isolate(isolate),
+    _realarray(value.isArray()),
     _arrayaccess(value.instanceOf("ArrayAccess")),
     _callable(value.instanceOf("Callable"))
 {
@@ -72,25 +76,31 @@ ObjectTemplate::ObjectTemplate(const std::shared_ptr<Context> &context, const Ph
     // pointer to ourselves
     auto self = v8::External::New(_isolate, this);
     
-    // register the property handlers
+    std::cout << "set-named-prooerty-handles" << std::endl;
+    
+    // register the property handlers for objects and arrays
     tpl->SetHandler(v8::NamedPropertyHandlerConfiguration(
-        &ObjectTemplate::getPropertyCB,         // get access to a property
-        &ObjectTemplate::setPropertyCB,         // assign a property
-        nullptr,                                // query to check which properties exist
-        nullptr,                                // remove a property
-        &ObjectTemplate::enumeratePropertiesCB, // enumerate over an object
-        self                                    // self-reference
+        &ObjectTemplate::getPropertyCB,                                 // get access to a property         
+        &ObjectTemplate::setPropertyCB,                                 // assign a property
+        nullptr,                                                        // query to check which properties exist
+        nullptr,                                                        // remove a property
+        &ObjectTemplate::enumeratePropertiesCB,                         // enumerate over an object
+        self                                                            // self-reference
     ));
+
+    if (_arrayaccess || _realarray) std::cout << "set-index-prooerty-handles" << std::endl;
     
     // for ArrayAccess objects we also configure callbacks to get access to properties by their ID
-    if (_arrayaccess) tpl->SetHandler(v8::IndexedPropertyHandlerConfiguration(
-        &ObjectTemplate::getIndexCB,            // get access to an index
-        &ObjectTemplate::setIndexCB,            // assign a property by index
-        nullptr,                                // query to check which properties exist
-        nullptr,                                // remove a property
-        &ObjectTemplate::enumerateIndexesCB,    // enumerate over an object based on the index  // @todo I wonder if this is correct! ArrayAccess does not necessarily imply indexed access
-        self                                    // self-reference
+    if (_arrayaccess || _realarray) tpl->SetHandler(v8::IndexedPropertyHandlerConfiguration(
+        &ObjectTemplate::getIndexCB,                                    // get access to an index
+        &ObjectTemplate::setIndexCB,                                    // assign a property by index
+        nullptr,                                                        // query to check which properties exist
+        nullptr,                                                        // remove a property
+        _realarray ? nullptr : &ObjectTemplate::enumerateIndexesCB,     // enumerate over an object based on the index  // @todo I wonder if this is correct! ArrayAccess does not necessarily imply indexed access
+        self                                                            // self-reference
     ));
+
+    if (_callable) std::cout << "set call-as-function" << std::endl;
     
     // when object is callable, we need to install a callback too
     if (_callable) tpl->SetCallAsFunctionHandler(&ObjectTemplate::callCB, self);
@@ -116,6 +126,7 @@ ObjectTemplate::~ObjectTemplate()
 bool ObjectTemplate::matches(const Php::Value &value) const
 {
     // check whetner the object has certain features
+    if (_realarray != value.isArray()) return false;
     if (_arrayaccess != value.instanceOf("ArrayAccess")) return false;
     if (_callable != value.isCallable()) return false;
     
@@ -141,9 +152,13 @@ v8::Local<v8::Value> ObjectTemplate::apply(const Php::Value &value) const
 
     // the actual ojbect
     auto object = result.ToLocalChecked();
+    
+    // arrays cannot be weak-referenced, so we won't link them
+    // @todo or would it be more effective to wrap in an ArrayObject?
+    if (!value.isObject()) return object;
 
     // object to link the two objects together
-    Linker linker(_context.lock(), object);
+    Linker linker(Context::upgrade(_isolate), object);
     
     // attach the objects
     linker.attach(value);
@@ -278,11 +293,62 @@ void ObjectTemplate::callCB(const v8::FunctionCallbackInfo<v8::Value>& info)
  */
 v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
+    // @todo check implementation for objects
+    
+
+    std::cout << "ObjectTemplate::getProperty " << std::endl;
+    
+    
+    Scope scope(info.GetIsolate());
+    
+    if (property->IsSymbol()) 
+    {
+        std::cout << "is-symbol!" << std::endl;
+
+        v8::Local<v8::Symbol> s = property.As<v8::Symbol>();
+        
+        v8::Local<v8::Value> sv = s->Description(_isolate);
+
+        v8::String::Utf8Value desc(_isolate, s->Description(_isolate));
+        std::cout << "Symbol description: " << *desc << std::endl;
+        
+        if (s->Equals(scope, v8::Symbol::GetIterator(_isolate)).FromMaybe(false))
+        {
+            std::cout << "It's an interator" << std::endl;
+
+            // the object that is being accessed
+            Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
+            
+            // create an iterator
+            Iterator iter(Context::upgrade(_isolate), object);
+
+            // use the array access to retrieve the property
+            info.GetReturnValue().Set(v8::Global<v8::Value>(_isolate, iter.value()));
+            
+            // this has been handled by us
+            return v8::Intercepted::kYes;
+            
+            
+        }
+        // this is not handled by us
+        return v8::Intercepted::kNo;
+    }
+    
+    // @todo do we need an implementation here?
+    if (property->IsSymbolObject()) std::cout << "is-symbol object!" << std::endl;
+    
+    
     // the object that is being accessed
-    Php::Value object = Linker(_context.lock(), info.This()).value();
+    Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
     
     // convert to a utf8value to get the actual c-string
     v8::String::Utf8Value name(_isolate, property.As<v8::String>());
+
+    const char *cstr = *name;
+    
+    if (cstr == nullptr) std::cout << "nullptr" << std::endl;
+
+    std::cout << "ObjectTemplate::getProperty " << *name << std::endl;
 
     /**
      *  This is where it gets a little weird.
@@ -308,7 +374,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
      */
 
     // does the method exist, is it callable or is it a property
-    bool method_exists  = Php::call("method_exists", object, *name);
+    bool method_exists  = object.isObject() && Php::call("method_exists", object, *name);
 //    bool is_callable    = object.isCallable(*name);
     bool contains       = object.contains(*name, name.length());
     
@@ -316,7 +382,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
     if (contains && !method_exists)
     {
         // get the object property value
-        FromPhp value(_context.lock(), object.get(*name, name.length()));
+        FromPhp value(_isolate, object.get(*name, name.length()));
         
         // convert it to a javascript handle and return it
         info.GetReturnValue().Set(v8::Global<v8::Value>(_isolate, value.local()));
@@ -330,7 +396,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
     else if (object.instanceOf("ArrayAccess") && object.call("offsetExists", *name))
     {
         // get the object property value
-        FromPhp value(_context.lock(), object.call("offsetGet", *name));
+        FromPhp value(_isolate, object.call("offsetGet", *name));
 
         // use the array access to retrieve the property
         info.GetReturnValue().Set(v8::Global<v8::Value>(_isolate, value.local()));
@@ -370,21 +436,40 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
  */
 v8::Intercepted ObjectTemplate::getIndex(unsigned index, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
+    std::cout << "ObjectTemplate::getIndex" << std::endl;
+
     // the object that is being accessed
-    Php::Value object = Linker(_context.lock(), info.This()).value();
- 
-    // check if we have an item at the requested offset
-    // @todo returning kNo is a change!
-    if (!object.call("offsetExists", static_cast<int64_t>(index))) return v8::Intercepted::kNo;
+    Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
+    
+    // is the underlying variable an array?
+    if (object.isArray() && object.contains(index))
+    {
+        // make the call
+        FromPhp value(_isolate, object.get(static_cast<int64_t>(index)));
 
-    // make the call
-    FromPhp value(_context.lock(), object.call("offsetGet", static_cast<int64_t>(index)));
+        // set the result
+        info.GetReturnValue().Set(v8::Global<v8::Value>(_isolate, value.local()));
 
-    // set the result
-    info.GetReturnValue().Set(v8::Global<v8::Value>(_isolate, value.local()));
- 
-    // call was handled
-    return v8::Intercepted::kYes;
+        // call was handled
+        return v8::Intercepted::kYes;
+    }
+    
+    // is the underlying variable an ArrayAccess with this property?
+    if (object.isObject() && object.call("offsetExists", static_cast<int64_t>(index)))
+    {
+        // make the call
+        FromPhp value(_isolate, object.call("offsetGet", static_cast<int64_t>(index)));
+
+        // set the result
+        info.GetReturnValue().Set(v8::Global<v8::Value>(_isolate, value.local()));
+        
+        // call was handled
+        return v8::Intercepted::kYes;
+    }
+    
+    // call was not handled
+    // @todo this is a change of behavior, originally we returned undefined
+    return v8::Intercepted::kNo;
 }
 
 /**
@@ -395,15 +480,19 @@ v8::Intercepted ObjectTemplate::getIndex(unsigned index, const v8::PropertyCallb
  */
 v8::Intercepted ObjectTemplate::setProperty(v8::Local<v8::Name> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info)
 {
+    std::cout << "ObjectTemplate::SetProperty" << std::endl;
+
+    // @todo check implementation for arrays
+    
     // the object that is being accessed
-    Php::Value object = Linker(_context.lock(), info.This()).value();
+    Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
 
     // We are calling into PHP space so we need to catch all exceptions
     // @todo why do we not have such try/catch blocks in other calls?
     try
     {
         // make the call
-        object.call("offsetSet", ToPhp(_context.lock(), property), ToPhp(_context.lock(), input));
+        object.call("offsetSet", ToPhp(Context::upgrade(_isolate), property), ToPhp(Context::upgrade(_isolate), input));
     }
     catch (const Php::Exception& exception)
     {
@@ -428,15 +517,23 @@ v8::Intercepted ObjectTemplate::setProperty(v8::Local<v8::Name> property, v8::Lo
  */
 v8::Intercepted ObjectTemplate::setIndex(unsigned index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info)
 {
+    std::cout << "ObjectTemplate::setIndex" << std::endl;
+
     // the object that is being accessed
-    Php::Value object = Linker(_context.lock(), info.This()).value();
+    Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
 
     // We are calling into PHP space so we need to catch all exceptions
     // @todo why do we not have such try/catch blocks in other calls?
     try
     {
+        // the variable to set
+        ToPhp value(Context::upgrade(_isolate), input);
+        
+        // if the underlying variable is an array
+        if (object.isArray()) object.set(static_cast<int64_t>(index), value);
+        
         // make the call
-        object.call("offsetSet", static_cast<int64_t>(index), ToPhp(_context.lock(), input));
+        else object.call("offsetSet", static_cast<int64_t>(index), value);
     }
     catch (const Php::Exception& exception)
     {
@@ -459,8 +556,14 @@ v8::Intercepted ObjectTemplate::setIndex(unsigned index, v8::Local<v8::Value> in
  */
 void ObjectTemplate::enumerateProperties(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
+    std::cout << "ObjectTemplate::enumerate-properties" << std::endl;
+
+
+    // @todo check implementation for arrays!
+    
+    
     // the object that is being accessed
-    Php::Value object = Linker(_context.lock(), info.This()).value();
+    Php::Value object = Linker(Context::upgrade(_isolate), info.This()).value();
 
     // create a new array to store all the properties
     v8::Local<v8::Array> properties(v8::Array::New(_isolate));
@@ -476,7 +579,7 @@ void ObjectTemplate::enumerateProperties(const v8::PropertyCallbackInfo<v8::Arra
         if (!property.first.isString()) continue;
 
         // add the property to the list
-        auto result = properties->Set(_isolate->GetCurrentContext(), index++, FromPhp(_context.lock(), property.first));
+        auto result = properties->Set(_isolate->GetCurrentContext(), index++, FromPhp(_isolate, property.first));
         
         // leap out on error
         if (!result.IsJust() || !result.FromJust()) return;
@@ -484,6 +587,7 @@ void ObjectTemplate::enumerateProperties(const v8::PropertyCallbackInfo<v8::Arra
 
     // set the value as the 'return' parameter
     info.GetReturnValue().Set(properties);
+
 }
 
 /**
@@ -492,6 +596,8 @@ void ObjectTemplate::enumerateProperties(const v8::PropertyCallbackInfo<v8::Arra
  */
 void ObjectTemplate::enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
+    std::cout << "ObjectTemplate::enumerate-indexes" << std::endl;
+    
     // @todo implementation
 }
 
@@ -501,6 +607,9 @@ void ObjectTemplate::enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> 
  */
 void ObjectTemplate::call(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
+    std::cout << "ObjectTemplate::call" << std::endl;
+
+
     // @todo implementation
 }
 

@@ -33,6 +33,11 @@
 namespace JS {
 
 /**
+ *  Forward declarations
+ */
+class Context;
+
+/**
  *  Private class
  */
 class Isolate final
@@ -51,6 +56,14 @@ private:
     v8::Isolate *_isolate;
 
     /**
+     *  Indexes for storing pointers
+     *  @var    int
+     */
+    static const int ISOLATE_INDEX = 0;
+    static const int CONTEXT_INDEX = 1;
+
+
+    /**
      *  List of tasks to execute
      *  @var    std::multimap<std::chrono::system_clock::time_point, std::unique_ptr<v8::Task>>
      */
@@ -64,14 +77,22 @@ private:
 public:
     /**
      *  Constructor
+     *  A context-pointer has to be passed to the isolate, to make the Context::get() method work
+     *  @paran  context
      */
-    Isolate()
+    Isolate(Context *context)
     {
         // we need an allocator
         _params.array_buffer_allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
         
         // construct the isolate
         _isolate = v8::Isolate::New(_params);
+        
+        // store a pointer to the context
+        _isolate->SetData(CONTEXT_INDEX, context);
+        
+        // store a pointer to the isolate
+        _isolate->SetData(ISOLATE_INDEX, this);
     }
     
     /**
@@ -90,6 +111,28 @@ public:
         
         // free up allocator
         delete _params.array_buffer_allocator;
+    }
+
+    /**
+     *  Get access to the isolate
+     *  @param  isolate
+     *  @return Isolate
+     */
+    static Isolate *update(v8::Isolate *isolate)
+    {
+        // is stored in a data field
+        return static_cast<Isolate *>(isolate->GetData(ISOLATE_INDEX));
+    }
+
+    /**
+     *  Get access to the context
+     *  @param  isolate
+     *  @return Context
+     */
+    static Context *context(v8::Isolate *isolate)
+    {
+        // is stored in a data field
+        return static_cast<Context *>(isolate->GetData(CONTEXT_INDEX));
     }
 
     /**

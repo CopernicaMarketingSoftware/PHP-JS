@@ -13,6 +13,9 @@
 #include "context.h"
 #include "fromphp.h"
 #include "tophp.h"
+#include "scope.h"
+
+
 #include <iostream>
 
 /**
@@ -23,7 +26,7 @@ namespace JS {
 /**
  *  Constructor
  */
-Context::Context() : _platform(Platform::instance())
+Context::Context() : _platform(Platform::instance()), _isolate(this)
 {
     // when we access the isolate, we need a scope
     v8::HandleScope scope(_isolate);
@@ -78,8 +81,10 @@ v8::Local<v8::Value> Context::wrap(const Php::Value &object)
         return prototype->apply(object);
     }
     
+    std::cout << "create new handler" << std::endl;
+    
     // we need a new prototype
-    _prototypes.emplace_back(new ObjectTemplate(shared_from_this(), object));
+    _prototypes.emplace_back(new ObjectTemplate(_isolate, object));
     
     // use it
     return _prototypes.back()->apply(object);
@@ -94,20 +99,11 @@ v8::Local<v8::Value> Context::wrap(const Php::Value &object)
  */
 Php::Value Context::assign(const Php::Value &name, const Php::Value &value, const Php::Value &attributes)
 {
-    // scope for the isolate
-    v8::Isolate::Scope iscope(_isolate);
-
-    // stack-allocated handle scope
-    v8::HandleScope hscope(_isolate);
-
-    // we need the context in a local handle
-    v8::Local<v8::Context> context(_context.Get(_isolate));
-    
-    // enter the context for modifying the context
-    v8::Context::Scope cscope(context);
+    // scope for the context
+    Scope scope(shared_from_this());
 
     // retrieve the global object from the context
-    v8::Local<v8::Object> global(context->Global());
+    v8::Local<v8::Object> global(scope.global());
 
     // the attribute for the newly assigned property
     //v8::PropertyAttribute   attribute(v8::None);
@@ -125,8 +121,13 @@ Php::Value Context::assign(const Php::Value &name, const Php::Value &value, cons
     //    }
     //}
 
+    
+    // get the value
+    // @todo why this var?
+    FromPhp value2(_isolate, value);
+
     // and store the value
-    v8::Maybe<bool> result = global->Set(context, FromPhp(shared_from_this(), name), FromPhp(shared_from_this(), value));
+    v8::Maybe<bool> result = global->Set(scope, FromPhp(_isolate, name), value2); //FromPhp(shared_from_this(), value));
     
     // check for success
     return result.IsJust() && result.FromJust();

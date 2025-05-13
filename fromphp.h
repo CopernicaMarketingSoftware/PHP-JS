@@ -39,10 +39,10 @@ private:
 public:
     /**
      *  Constructor
-     *  @param  context
+     *  @param  isolate
      *  @param  value
      */
-    FromPhp(const std::shared_ptr<Context> &context, const Php::Value &value);
+    FromPhp(v8::Isolate *isolate, const Php::Value &value);
     
     /**
      *  Destructor

@@ -85,6 +85,13 @@ public:
      *  @return v8::Local<v8::Context>
      */
     operator v8::Local<v8::Context>& () { return _context; }
+    
+    /**
+     *  Get the global object
+     *  @return v8::Local<v8::Object>
+     */
+    v8::Local<v8::Object> global() const { return _context->Global(); }
+
 };
     
 /**

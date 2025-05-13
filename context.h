@@ -102,6 +102,15 @@ public:
     virtual ~Context();
 
     /**
+     *  Given an isolate, it is possible to upgrade to the full context
+     *  @return std::shared_ptr
+     */
+    static std::shared_ptr<Context> upgrade(v8::Isolate *isolate)
+    {
+        return Isolate::context(isolate)->shared_from_this();
+    }
+
+    /**
      *  Release the object / it is no longer directly referenced from PHP space
      *  Note that we may still have objects in PHP space that are indirectly referenced
      */
