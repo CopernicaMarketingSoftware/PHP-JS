@@ -73,7 +73,7 @@ void Context::release()
 v8::Local<v8::Value> Context::wrap(const Php::Value &object)
 {
     // if the object is already known to be a JS\Object
-    if (object.instanceOf("JS\\Object")) JSObject::unwrap(object);
+    if (object.instanceOf("JS\\Object")) return JSObject::unwrap(object);
     
     // check the prototypes that we have
     for (auto &prototype : _prototypes)
@@ -84,8 +84,6 @@ v8::Local<v8::Value> Context::wrap(const Php::Value &object)
         // we can apply this prototype
         return prototype->apply(object);
     }
-    
-    std::cout << "create new handler" << std::endl;
     
     // we need a new prototype
     _prototypes.emplace_back(new ObjectTemplate(_isolate, object));
@@ -125,7 +123,6 @@ Php::Value Context::assign(const Php::Value &name, const Php::Value &value, cons
     //    }
     //}
 
-    
     // get the value
     // @todo why this var?
     FromPhp value2(_isolate, value);

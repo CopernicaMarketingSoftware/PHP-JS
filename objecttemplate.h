@@ -170,6 +170,12 @@ private:
     static void enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> &info);
     
     /**
+     *  A function is called that happens to be a method
+     *  @param  into        callback info
+     */
+    static void method(const v8::FunctionCallbackInfo<v8::Value>& info);
+
+    /**
      *  The object is called as if it was a function
      *  @param  into        callback info
      */

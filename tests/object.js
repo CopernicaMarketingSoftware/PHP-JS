@@ -14,6 +14,9 @@
 //i.next();
 
 
+hallo();
+
+
 for (let v of y) 
 {
 
@@ -30,4 +33,8 @@ for (let v of y)
  *  Last expression is the return-value
  */
 //[obj, obj];
+
+
+// @todo when there is a syntax error it sigsegv
+x.hello();
 

@@ -37,8 +37,6 @@ FromPhp::FromPhp(v8::Isolate *isolate, const Php::Value &value)
     case Php::Type::Array:      _value = Context::upgrade(isolate)->wrap(value); return;
     default:                    _value = v8::Undefined(isolate); return;
     }
-
-    // @todo implementation for array and callable
 }
 
 /**

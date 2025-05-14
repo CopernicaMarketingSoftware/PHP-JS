@@ -66,7 +66,7 @@ ObjectTemplate::ObjectTemplate(v8::Isolate *isolate, const Php::Value &value) :
     _isolate(isolate),
     _realarray(value.isArray()),
     _arrayaccess(value.instanceOf("ArrayAccess")),
-    _callable(value.instanceOf("Callable"))         // @todo this does not exist! (should we be checking for __invoke?)
+    _callable(value.isObject() && Php::call("method_exists", value, "__invoke"))
 {
     // @todo do we need a scope here?
     
@@ -128,7 +128,7 @@ bool ObjectTemplate::matches(const Php::Value &value) const
     // check whetner the object has certain features
     if (_realarray != value.isArray()) return false;
     if (_arrayaccess != value.instanceOf("ArrayAccess")) return false;
-    if (_callable != value.isCallable()) return false;
+    if (_callable != (value.isObject() && Php::call("method_exists", value, "__invoke"))) return false;
     
     // seems all properties are supported
     return true;
@@ -187,14 +187,11 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
     if (!object.isObject()) return v8::Intercepted::kNo;
     
     // convert to a utf8value to get the actual c-string
-    v8::String::Utf8Value name(info.GetIsolate(), property.As<v8::String>());
+    v8::Local<v8::String> prop = property.As<v8::String>();
 
-    const char *cstr = *name;
+    // for use as c_str    
+    v8::String::Utf8Value name(info.GetIsolate(), prop);
     
-    if (cstr == nullptr) std::cout << "nullptr" << std::endl;
-
-    std::cout << "ObjectTemplate::getProperty " << *name << std::endl;
-
     /**
      *  This is where it gets a little weird.
      *
@@ -220,7 +217,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
 
     // does the method exist, is it callable or is it a property
     bool method_exists  = object.isObject() && Php::call("method_exists", object, *name);
-//    bool is_callable    = object.isCallable(*name);
+    bool is_callable    = object.isCallable(*name);
     bool contains       = object.contains(*name, name.length());
     
     // does a property exist by the given name and is it not defined as a method?
@@ -230,13 +227,19 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
         FromPhp value(info.GetIsolate(), object.get(*name, name.length()));
         
         // convert it to a javascript handle and return it
-        info.GetReturnValue().Set(v8::Global<v8::Value>(info.GetIsolate(), value.local()));
+        info.GetReturnValue().Set(value.local());
+
+        // handled
+        return v8::Intercepted::kYes;
     }
     // is it a countable object we want the length off?
     else if (std::strcmp(*name, "length") == 0 && object.instanceOf("Countable"))
     {
         // return the count from this object
         info.GetReturnValue().Set(findMax(object));
+
+        // handled
+        return v8::Intercepted::kYes;
     }
     else if (object.instanceOf("ArrayAccess") && object.call("offsetExists", *name))
     {
@@ -244,7 +247,10 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
         FromPhp value(info.GetIsolate(), object.call("offsetGet", *name));
 
         // use the array access to retrieve the property
-        info.GetReturnValue().Set(v8::Global<v8::Value>(info.GetIsolate(), value.local()));
+        info.GetReturnValue().Set(value.local());
+
+        // handled
+        return v8::Intercepted::kYes;
     }
 // @todo implementation
 //    else if (object.isCallable("__toString") && (std::strcmp(*name, "valueOf") == 0 || std::strcmp(*name, "toString") == 0))
@@ -254,23 +260,37 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
 //
 //        // create the function to be called
 //        info.GetReturnValue().Set(v8::FunctionTemplate::New(info.GetIsolate(), callback, Handle(std::move(callable)))->GetFunction());
-//    }
-//    else if (is_callable)
-//    {
-//        // create an array with the object and the method to be called
-//        Php::Array callable({ object, Php::Value{ *name, name.length() } });
 //
-//        // create the function to be called
-//        info.GetReturnValue().Set(v8::FunctionTemplate::New(Isolate::get(), callback, Handle(std::move(callable)))->GetFunction());
+//        // handled
+//        return v8::Intercepted::kYes;
+//
 //    }
-//    else
-//    {
-//        // in javascript, retrieving an unset object property returns undefined
-//        info.GetReturnValue().SetUndefined();
-//    }
+    else if (is_callable)
+    {
+        // we need a handle scope
+        Scope scope(info.GetIsolate());
+        
+        // we goong to pass the "this" and method name via data
+        v8::Local<v8::Array> data = v8::Array::New(info.GetIsolate(), 2);
+        
+        // store the method name and this-pointer in the data
+        data->Set(scope, 0, info.This()).Check();
+        data->Set(scope, 1, prop).Check();
+        
+        // create a new function object (with the data holding "this" and the name)
+        auto func = v8::Function::New(scope, &ObjectTemplate::method, data).ToLocalChecked();
+        
+        // create the function to be called
+        info.GetReturnValue().Set(func);
 
-    // @todo should we handle this in all cases?
-    return v8::Intercepted::kYes;
+        // handled
+        return v8::Intercepted::kYes;
+    }
+    else
+    {
+        // not handled
+        return v8::Intercepted::kNo;
+    }
 }
 
 /**
@@ -532,15 +552,53 @@ void ObjectTemplate::enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> 
 }
 
 /**
+ *  A function is called that happens to be a method
+ *  @param  into        callback info
+ */
+void ObjectTemplate::method(const v8::FunctionCallbackInfo<v8::Value>& info)
+{
+    // we might need a scope
+    Scope scope(info.GetIsolate());
+    
+    // the data is an array
+    v8::Local<v8::Array> data(info.Data().As<v8::Array>());
+    
+    // the "this" object is stored in the data
+    auto self = data->Get(scope, 0).As<v8::Object>().ToLocalChecked();
+    auto prop = data->Get(scope, 1).As<v8::String>().ToLocalChecked();
+    
+    // make sure the name can be used as c_str
+    v8::String::Utf8Value name(info.GetIsolate(), prop);
+
+    // the object that is being accessed
+    // @todo what if object is gone?
+    Php::Value object = Linker(info.GetIsolate(), self).value();
+
+    // call the function
+    // @todo pass parameters
+    // @todo catch exceptions
+    auto result = object.call(*name);
+
+    // store return value
+    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), result).local());
+}
+
+/**
  *  The object is called as if it was a function
  *  @param  into        callback info
  */
 void ObjectTemplate::call(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    std::cout << "ObjectTemplate::call" << std::endl;
+    // the object that is being accessed
+    Php::Value object = Linker(info.GetIsolate(), info.This()).value();
 
+    // call the function
+    // @todo pass parameters
+    // @todo catch exceptions
+    auto result = object();
 
-    // @todo implementation
+    // store return value
+    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), result).local());
 }
 
 /**

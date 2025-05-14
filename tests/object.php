@@ -14,7 +14,11 @@ class MyClass1
 {
     public $x = 10;
     public $y = 12;
-    
+
+    public function hello()
+    {
+        echo("hello world from a method\n");
+    }
 }
 
 class MyClass2 implements ArrayAccess, IteratorAggregate
@@ -31,11 +35,20 @@ class MyClass2 implements ArrayAccess, IteratorAggregate
     public function offsetUnset($x) {}
     
     public function getIterator() { return new ArrayIterator($this); }
+
+    public function hello()
+    {
+        echo("hello world from a method\n");
+    }
 }
 
 $context->assign('x', new MyClass1());
 $context->assign('y', new MyClass2);
 $context->assign('z', array(3,4,5));
+
+$context->assign('hallo', function() {
+    echo("Hello World!\n");
+});
 
 $result = $context->evaluate(file_get_contents(__DIR__.'/object.js'));
 var_dump($result);
