@@ -8,9 +8,10 @@
  *  @copyright 2025 Copernica BV
  */
 
-const i = y[Symbol.iterator];
-
-i.next();
+// @todo this was causing a crash
+//const i = y[Symbol.iterator];
+//
+//i.next();
 
 
 for (let v of y) 

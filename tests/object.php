@@ -17,7 +17,7 @@ class MyClass1
     
 }
 
-class MyClass2 implements ArrayAccess
+class MyClass2 implements ArrayAccess, IteratorAggregate
 {
     public $x = 10;
     public $y = 12;
@@ -29,6 +29,8 @@ class MyClass2 implements ArrayAccess
     public function offsetSet($x, $y) {}
     public function offsetExists($x) { return true; }
     public function offsetUnset($x) {}
+    
+    public function getIterator() { return new ArrayIterator($this); }
 }
 
 $context->assign('x', new MyClass1());

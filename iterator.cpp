@@ -31,6 +31,10 @@ Iterator::Iterator(v8::Isolate *isolate, const Php::Value &value)
 {
     // @todo should we be calling rewind() right away?
     
+    std::cout << "Iterator::Iterator" << std::endl;
+    
+    Php::call("var_dump", value);
+    
     // we need a scope
     Scope scope(isolate);
     
@@ -54,6 +58,9 @@ Iterator::Iterator(v8::Isolate *isolate, const Php::Value &value)
     // install them on the object
     _iterator->Set(scope, nxtlabel, nxtmethod).Check();
     _iterator->Set(scope, retlabel, retmethod).Check();
+    
+    // we also make the iterator of itself iterable (when the iterator is explicitly iterated) 
+    _iterator->Set(scope, v8::Symbol::GetIterator(isolate), _iterator).Check();    
 }
 
 /**

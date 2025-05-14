@@ -67,6 +67,13 @@ public:
      *  Destructor
      */
     virtual ~JSObject();
+    
+    /**
+     *  Helper method to unwrap an object
+     *  @param  value
+     *  @return v8::Local<v8::Object>
+     */
+    static v8::Local<v8::Object> unwrap(const Php::Value &value);
 
     /**
      *  Retrieve a property

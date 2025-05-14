@@ -62,7 +62,7 @@ private:
      *  @param  info        callback info
      *  @return v8::Intercepted
      */
-    static v8::Intercepted getPropertyCB(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value> &info);
+//    static v8::Intercepted getPropertyCB(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value> &info);
 
     /**
      *  Retrieve a property or function from the object
@@ -70,7 +70,7 @@ private:
      *  @param  info        callback info
      *  @return v8::Intercepted
      */
-    static v8::Intercepted getIndexCB(unsigned index, const v8::PropertyCallbackInfo<v8::Value> &info);
+//    static v8::Intercepted getIndexCB(unsigned index, const v8::PropertyCallbackInfo<v8::Value> &info);
 
     /**
      *  Set a property or function on the object
@@ -78,7 +78,7 @@ private:
      *  @param  input       the new property value
      *  @param  info        callback info
      */
-    static v8::Intercepted setPropertyCB(v8::Local<v8::Name> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info);
+//    static v8::Intercepted setPropertyCB(v8::Local<v8::Name> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info);
 
     /**
      *  Set a property or function on the object
@@ -86,25 +86,25 @@ private:
      *  @param  input       the new property value
      *  @param  info        callback info
      */
-    static v8::Intercepted setIndexCB(unsigned index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info);
+//    static v8::Intercepted setIndexCB(unsigned index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info);
 
     /**
      *  Retrieve a list of string properties for enumeration
      *  @param  info        callback info
      */
-    static void enumeratePropertiesCB(const v8::PropertyCallbackInfo<v8::Array> &info);
+//    static void enumeratePropertiesCB(const v8::PropertyCallbackInfo<v8::Array> &info);
     
     /**
      *  Retrieve a list of integer properties for enumeration
      *  @param  info        callback info
      */
-    static void enumerateIndexesCB(const v8::PropertyCallbackInfo<v8::Array> &info);
+//    static void enumerateIndexesCB(const v8::PropertyCallbackInfo<v8::Array> &info);
     
     /**
      *  The object is called as if it was a function
      *  @param  into        callback info
      */
-    static void callCB(const v8::FunctionCallbackInfo<v8::Value>& info);
+//    static void callCB(const v8::FunctionCallbackInfo<v8::Value>& info);
 
     /**
      *  Retrieve a property or function from the object
@@ -112,7 +112,26 @@ private:
      *  @param  info        callback info
      *  @return v8::Intercepted
      */
-    v8::Intercepted getProperty(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value> &info);
+    static v8::Intercepted getProperty(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value> &info);
+
+    /**
+     *  Retrieve a symbol from the object
+     *  @param  symbol      the symbol to retrieve
+     *  @param  info        callback info
+     */
+    static v8::Intercepted getSymbol(v8::Local<v8::Symbol> symbol, const v8::PropertyCallbackInfo<v8::Value> &info);
+
+    /**
+     *  Convert to a string
+     *  @param  info        callback info
+     */
+    static v8::Intercepted getString(const v8::PropertyCallbackInfo<v8::Value> &info);
+
+    /**
+     *  Convert to an iterator
+     *  @param  info        callback info
+     */
+    static v8::Intercepted getIterator(const v8::PropertyCallbackInfo<v8::Value> &info);
 
     /**
      *  Retrieve a property or function from the object
@@ -120,7 +139,7 @@ private:
      *  @param  info        callback info
      *  @return v8::Intercepted
      */
-    v8::Intercepted getIndex(unsigned index, const v8::PropertyCallbackInfo<v8::Value> &info);
+    static v8::Intercepted getIndex(unsigned index, const v8::PropertyCallbackInfo<v8::Value> &info);
 
     /**
      *  Set a property or function on the object
@@ -128,7 +147,7 @@ private:
      *  @param  input       the new property value
      *  @param  info        callback info
      */
-    v8::Intercepted setProperty(v8::Local<v8::Name> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info);
+    static v8::Intercepted setProperty(v8::Local<v8::Name> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info);
 
     /**
      *  Set a property or function on the object
@@ -136,25 +155,25 @@ private:
      *  @param  input       the new property value
      *  @param  info        callback info
      */
-    v8::Intercepted setIndex(unsigned index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info);
+    static v8::Intercepted setIndex(unsigned index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info);
 
     /**
      *  Retrieve a list of string properties for enumeration
      *  @param  info        callback info
      */
-    void enumerateProperties(const v8::PropertyCallbackInfo<v8::Array> &info);
+    static void enumerateProperties(const v8::PropertyCallbackInfo<v8::Array> &info);
     
     /**
      *  Retrieve a list of integer properties for enumeration
      *  @param  info        callback info
      */
-    void enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> &info);
+    static void enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> &info);
     
     /**
      *  The object is called as if it was a function
      *  @param  into        callback info
      */
-    void call(const v8::FunctionCallbackInfo<v8::Value>& info);
+    static void call(const v8::FunctionCallbackInfo<v8::Value>& info);
 
 
 

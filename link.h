@@ -36,6 +36,9 @@ private:
      *  The linked Php::Value (this is a WeakReference instance, because we do not want to prevent the php object
      *  to fall out of scope, if user-space is no longer interested in it, we are neither)
      *  @var Php::Value
+     * 
+     * 
+     *  @todo should we using weakreferences or regular references????
      */
     Php::Value _value;
     
@@ -46,7 +49,7 @@ public:
      *  @param  object
      *  @param  value
      */
-    Link(v8::Isolate *isolate, const v8::Local<v8::Object> &object, const Php::Value &value) : _object(isolate, object), _value(Php::call("WeakReference::create", value))
+    Link(v8::Isolate *isolate, const v8::Local<v8::Object> &object, const Php::Value &value) : _object(isolate, object), _value(value) //_value(Php::call("WeakReference::create", value))
     {
         // install a function that will be called when the object is garbage collected
         _object.SetWeak<Link>(this, [](const v8::WeakCallbackInfo<Link> &info) {
@@ -81,11 +84,13 @@ public:
      */
     Php::Value value() const
     {
-        // the value must be an object
-        if (!_value.isObject()) return nullptr;
+        return _value;
         
-        // get the underling object
-        return _value.call("get");
+//        // the value must be an object
+//        if (!_value.isObject()) return nullptr;
+//        
+//        // get the underling object
+//        return _value.call("get");
     }
 };
     

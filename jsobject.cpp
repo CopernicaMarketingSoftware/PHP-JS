@@ -40,6 +40,20 @@ JSObject::~JSObject()
 }
 
 /**
+ *  Helper method to unwrap an object
+ *  @param  value
+ *  @return v8::Local<v8::Object>
+ */
+v8::Local<v8::Object> JSObject::unwrap(const Php::Value &value)
+{
+    // get self-pointe
+    JSObject *self = (JSObject *)value.implementation();
+    
+    // get the local handle back
+    return self->_object.Get(self->_context->isolate());
+}
+
+/**
  *  Retrieve a property
  *  @param  name    Name of the property
  *  @return The requested property

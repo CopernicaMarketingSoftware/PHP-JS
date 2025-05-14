@@ -14,6 +14,7 @@
 #include "fromphp.h"
 #include "tophp.h"
 #include "scope.h"
+#include "jsobject.h"
 
 
 #include <iostream>
@@ -66,11 +67,14 @@ void Context::release()
 
 /**
  *  Wrap a certain PHP object into a javascript object
- *  @param  object      MUST be an object!
+ *  @param  object      MUST be an array or object!
  *  @return v8::Local<v8::Value>
  */
 v8::Local<v8::Value> Context::wrap(const Php::Value &object)
 {
+    // if the object is already known to be a JS\Object
+    if (object.instanceOf("JS\\Object")) JSObject::unwrap(object);
+    
     // check the prototypes that we have
     for (auto &prototype : _prototypes)
     {
