@@ -35,7 +35,7 @@ namespace JS {
 /**
  *  Forward declarations
  */
-class Context;
+class Core;
 
 /**
  *  Private class
@@ -60,7 +60,7 @@ private:
      *  @var    int
      */
     static const int ISOLATE_INDEX = 0;
-    static const int CONTEXT_INDEX = 1;
+    static const int CORE_INDEX = 1;
 
 
     /**
@@ -77,10 +77,10 @@ private:
 public:
     /**
      *  Constructor
-     *  A context-pointer has to be passed to the isolate, to make the Context::get() method work
+     *  A core-pointer has to be passed to the isolate, to make the Core::upgrade() method work
      *  @paran  context
      */
-    Isolate(Context *context)
+    Isolate(Core *core)
     {
         // we need an allocator
         _params.array_buffer_allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
@@ -88,8 +88,8 @@ public:
         // construct the isolate
         _isolate = v8::Isolate::New(_params);
         
-        // store a pointer to the context
-        _isolate->SetData(CONTEXT_INDEX, context);
+        // store a pointer to the core
+        _isolate->SetData(CORE_INDEX, core);
         
         // store a pointer to the isolate
         _isolate->SetData(ISOLATE_INDEX, this);
@@ -125,14 +125,14 @@ public:
     }
 
     /**
-     *  Get access to the context
+     *  Get access to the core
      *  @param  isolate
-     *  @return Context
+     *  @return Core
      */
-    static Context *context(v8::Isolate *isolate)
+    static Core *core(v8::Isolate *isolate)
     {
         // is stored in a data field
-        return static_cast<Context *>(isolate->GetData(CONTEXT_INDEX));
+        return static_cast<Core *>(isolate->GetData(CORE_INDEX));
     }
 
     /**

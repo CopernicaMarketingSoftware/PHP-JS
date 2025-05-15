@@ -17,7 +17,6 @@
  */
 #include <v8.h>
 #include <phpcpp.h>
-#include "context.h"
 
 /**
  *  Begin of namespace

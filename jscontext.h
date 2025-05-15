@@ -15,7 +15,7 @@
  *  Dependencies
  */
 #include <phpcpp.h>
-#include "context.h"
+#include "core.h"
 
 /**
  *  Start namespace
@@ -34,10 +34,10 @@ class JSContext : public Php::Base
 {
 private:
     /**
-     *  Shared pointer to the actual context data
-     *  @var std::shared_ptr<Context>
+     *  Shared pointer to the actual core data
+     *  @var std::shared_ptr<Core>
      */
-    std::shared_ptr<Context> _context;
+    std::shared_ptr<Core> _core;
 
 public:
     /**

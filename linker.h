@@ -32,7 +32,6 @@ namespace JS {
  *  Forward declarations
  */
 class Link;
-class Context;
 
 /**
  *  Class definition

@@ -13,7 +13,7 @@
  */
 #include "tophp.h"
 #include "jsobject.h"
-#include "context.h"
+#include "core.h"
 #include "linker.h"
 #include "phparray.h"
 

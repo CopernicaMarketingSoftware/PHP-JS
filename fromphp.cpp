@@ -11,6 +11,7 @@
  *  Dependencies
  */
 #include "fromphp.h"
+#include "core.h"
 
 /**
  *  Begin of namespace
@@ -33,8 +34,8 @@ FromPhp::FromPhp(v8::Isolate *isolate, const Php::Value &value)
     case Php::Type::True:       _value = v8::Boolean::New(isolate, true); return;
     case Php::Type::False:      _value = v8::Boolean::New(isolate, false); return;
     case Php::Type::String:     _value = v8::String::NewFromUtf8(isolate, value).ToLocalChecked(); return;
-    case Php::Type::Object:     _value = Context::upgrade(isolate)->wrap(value); return;
-    case Php::Type::Array:      _value = Context::upgrade(isolate)->wrap(value); return;
+    case Php::Type::Object:     _value = Core::upgrade(isolate)->wrap(value); return;
+    case Php::Type::Array:      _value = Core::upgrade(isolate)->wrap(value); return;
     default:                    _value = v8::Undefined(isolate); return;
     }
 }

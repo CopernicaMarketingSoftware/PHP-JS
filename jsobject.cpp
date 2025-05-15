@@ -27,7 +27,7 @@ namespace JS {
  *  @param  object      The ecmascript object
  */
 JSObject::JSObject(v8::Isolate *isolate, const v8::Local<v8::Object> &object) :
-    _context(Context::upgrade(isolate)),
+    _core(Core::upgrade(isolate)),
     _object(isolate, object) {}
 
 /**
@@ -49,8 +49,10 @@ v8::Local<v8::Object> JSObject::unwrap(const Php::Value &value)
     // get self-pointe
     JSObject *self = (JSObject *)value.implementation();
     
+    // @todo check if the object comes from the same core!
+    
     // get the local handle back
-    return self->_object.Get(self->_context->isolate());
+    return self->_object.Get(self->_core->isolate());
 }
 
 /**
@@ -61,20 +63,20 @@ v8::Local<v8::Object> JSObject::unwrap(const Php::Value &value)
 Php::Value JSObject::__get(const Php::Value &name) const
 {
     // scope for the call
-    Scope scope(_context);
+    Scope scope(_core);
     
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
     
     // get the property value
-    auto property = object->Get(scope, FromPhp(_context->isolate(), name));
+    auto property = object->Get(scope, FromPhp(_core->isolate(), name));
     
     // if it does not exist, we fall back on the default behavior
     // @todo consider better error handling
     if (property.IsEmpty()) return Php::Base::__get(name);
 
     // convert the value to a PHP value
-    return ToPhp(_context->isolate(), property.ToLocalChecked());
+    return ToPhp(_core->isolate(), property.ToLocalChecked());
 }
 
 /**
@@ -85,13 +87,13 @@ Php::Value JSObject::__get(const Php::Value &name) const
 void JSObject::__set(const Php::Value &name, const Php::Value &property)
 {
     // scope for the call
-    Scope scope(_context);
+    Scope scope(_core);
 
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
     
     // convert the value to a ecmascript value and store it (we explicitly want to ignore the return-value)
-    __attribute__((unused)) auto result = object->Set(scope, FromPhp(_context->isolate(), name), FromPhp(_context->isolate(), property));
+    __attribute__((unused)) auto result = object->Set(scope, FromPhp(_core->isolate(), name), FromPhp(_core->isolate(), property));
 }
 
 /**
@@ -102,13 +104,13 @@ void JSObject::__set(const Php::Value &name, const Php::Value &property)
 bool JSObject::__isset(const Php::Value &name)
 {
     // scope for the call
-    Scope scope(_context);
+    Scope scope(_core);
 
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
 
     // check if the object has the requested property
-    auto result = object->Has(scope, FromPhp(_context->isolate(), name));
+    auto result = object->Has(scope, FromPhp(_core->isolate(), name));
     
     // check for success
     return result.IsJust() && result.FromJust();
@@ -123,13 +125,13 @@ bool JSObject::__isset(const Php::Value &name)
 Php::Value JSObject::__call(const char *name, Php::Parameters &params)
 {
     // scope for the call
-    Scope scope(_context);
+    Scope scope(_core);
 
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
     
     // construct the method name
-    auto methodname = v8::String::NewFromUtf8(_context->isolate(), name);
+    auto methodname = v8::String::NewFromUtf8(_core->isolate(), name);
     if (methodname.IsEmpty()) throw Php::Exception("invalid method name");
     
     // variables to store property
@@ -151,14 +153,14 @@ Php::Value JSObject::__call(const char *name, Php::Parameters &params)
     for (size_t i = 0; i < params.size(); ++i) 
     {
         // set a parameter
-        args.push_back(FromPhp(_context->isolate(), params[i]));
+        args.push_back(FromPhp(_core->isolate(), params[i]));
     }
         
     // the result
     auto result = method->Call(scope, object, args.size(), args.data());
     
     // on success
-    if (!result.IsEmpty()) return ToPhp(_context->isolate(), result.ToLocalChecked());
+    if (!result.IsEmpty()) return ToPhp(_core->isolate(), result.ToLocalChecked());
     
     // a failure took place
     // @todo should we be capturing exceptions?
@@ -196,10 +198,10 @@ Php::Value JSObject::__call(const char *name, Php::Parameters &params)
 Php::Value JSObject::__toString()
 {
     // scope for the call
-    Scope scope(_context);
+    Scope scope(_core);
 
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
 
     // convert to string and then to php
     auto result = object->ToString(scope);
@@ -208,7 +210,7 @@ Php::Value JSObject::__toString()
     if (result.IsEmpty()) return nullptr;
     
     // convert to php space
-    return ToPhp(_context->isolate(), result.ToLocalChecked());
+    return ToPhp(_core->isolate(), result.ToLocalChecked());
 }
 
 /**
@@ -218,13 +220,13 @@ Php::Value JSObject::__toString()
 Php::Iterator *JSObject::getIterator()
 {
     // scope for the call
-    Scope scope(_context);
+    Scope scope(_core);
 
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
 
     // create a new iterator instance, cleaned up by PHP-CPP
-    return new JSIterator(this, _context, object);
+    return new JSIterator(this, _core, object);
 }
 
 /**

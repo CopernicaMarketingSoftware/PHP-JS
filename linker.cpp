@@ -12,7 +12,7 @@
  */
 #include "linker.h"
 #include "link.h"
-#include "context.h"
+#include "core.h"
 
 /**
  *  Begin of namespace
@@ -34,7 +34,7 @@ Linker::Linker(v8::Isolate *isolate, const v8::Global<v8::Private> &key, const v
  *  @param  object      the javascript object to be linked
  */
 Linker::Linker(v8::Isolate *isolate, const v8::Local<v8::Object> &object) :
-    Linker(isolate, Context::upgrade(isolate)->symbol(), object) {}
+    Linker(isolate, Core::upgrade(isolate)->symbol(), object) {}
 
 /**
  *  Get the internal pointer

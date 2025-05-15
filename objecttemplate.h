@@ -24,11 +24,6 @@
 namespace JS {
 
 /**
- *  Forward declarations
- */
-class Context;
-
-/**
  *  Class definition
  */
 class ObjectTemplate

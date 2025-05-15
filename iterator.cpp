@@ -39,13 +39,13 @@ Iterator::Iterator(v8::Isolate *isolate, const Php::Value &value)
     Scope scope(isolate);
     
     // we need the context for looking up the symbol
-    auto context = Context::upgrade(isolate);
+    auto core = Core::upgrade(isolate);
     
     // create a new object
     _iterator = v8::Object::New(isolate);
     
     // store pointer to state data
-    _iterator->SetPrivate(scope, context->symbol().Get(isolate), v8::External::New(isolate, new Data(isolate, value)));
+    _iterator->SetPrivate(scope, core->symbol().Get(isolate), v8::External::New(isolate, new Data(isolate, value)));
     
     // we need to set a "next" method and a "return" method on the iterator
     auto nxtlabel = v8::String::NewFromUtf8Literal(isolate, "next");
@@ -72,7 +72,7 @@ Iterator::Iterator(v8::Isolate *isolate, const Php::Value &value)
 Iterator::Data *Iterator::restore(v8::Isolate *isolate, const v8::Local<v8::Object> &obj)
 {
     // we need the symbol for linking pointers to objects
-    auto symbol = Context::upgrade(isolate)->symbol().Get(isolate);
+    auto symbol = Core::upgrade(isolate)->symbol().Get(isolate);
     
     // we need a local value
     v8::Local<v8::Value> val;
@@ -105,7 +105,7 @@ void Iterator::destruct(v8::Isolate *isolate, const v8::Local<v8::Object> &obj)
     delete data;
 
     // we need the symbol for linking pointers to objects
-    auto symbol = Context::upgrade(isolate)->symbol().Get(isolate);
+    auto symbol = Core::upgrade(isolate)->symbol().Get(isolate);
 
     // unset the symbol value
     obj->DeletePrivate(isolate->GetCurrentContext(), symbol);

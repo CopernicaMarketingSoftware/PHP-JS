@@ -17,7 +17,7 @@
 /**
  *  Dependencies
  */
-#include "context.h"
+#include "core.h"
 
 /**
  *  Begin of namespace
@@ -59,7 +59,7 @@ public:
      *  Constructor
      *  @param  context
      */
-    Scope(const std::shared_ptr<Context> &context) :
+    Scope(const std::shared_ptr<Core> &context) :
         _iscope(context->isolate()),
         _hscope(context->isolate()),
         _context(context->context(_hscope)),

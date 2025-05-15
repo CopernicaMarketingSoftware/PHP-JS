@@ -20,7 +20,7 @@ namespace JS {
 /**
  *  Constructor
  */
-JSContext::JSContext() : _context(std::make_shared<Context>()) {}
+JSContext::JSContext() : _core(std::make_shared<Core>()) {}
 
 /**
  *  Destructor
@@ -30,7 +30,7 @@ JSContext::~JSContext()
     // tell the underlying context that it is no longer used in PHP 
     // space via a JS\Context instance (although it may still be referenced
     // by object that have been returned to PHP space)
-    _context->release();
+    _core->release();
 }
 
 /**
@@ -52,7 +52,7 @@ JSContext::~JSContext()
 Php::Value JSContext::assign(Php::Parameters &params)
 {
     // pass on
-    return _context->assign(params[0], params[1], params[2]);
+    return _core->assign(params[0], params[1], params[2]);
 }
 
 /**
@@ -65,7 +65,7 @@ Php::Value JSContext::assign(Php::Parameters &params)
 Php::Value JSContext::evaluate(Php::Parameters &params)
 {
     // pass on
-    return _context->evaluate(params[0], params[1]);
+    return _core->evaluate(params[0], params[1]);
 }
     
 /**

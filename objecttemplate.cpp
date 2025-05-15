@@ -11,7 +11,7 @@
  *  Dependencies
  */
 #include "objecttemplate.h"
-#include "context.h"
+#include "core.h"
 #include "scope.h"
 #include "linker.h"
 #include "fromphp.h"

@@ -22,15 +22,15 @@ namespace JS {
 /**
  *  Constructor
  *  @param  base        The base that PHP-CPP insists on
- *  @param  context     The javascript context
+ *  @param  core        The javascript core
  *  @param  object      The object to iterate
  */
-JSIterator::JSIterator(Php::Base *base, const std::shared_ptr<Context> &context, const v8::Local<v8::Object> &object) : Php::Iterator(base),
-    _context(context),
-    _object(context->isolate(), object)
+JSIterator::JSIterator(Php::Base *base, const std::shared_ptr<Core> &core, const v8::Local<v8::Object> &object) : Php::Iterator(base),
+    _core(core),
+    _object(core->isolate(), object)
 {
     // get a scope (we already have one when we are called, but ok)
-    Scope scope(context);
+    Scope scope(core);
     
     // get the key (this is a maybe)
     auto maybe = object->GetPropertyNames(scope);
@@ -40,7 +40,7 @@ JSIterator::JSIterator(Php::Base *base, const std::shared_ptr<Context> &context,
     auto keys = maybe.ToLocalChecked();
     
     // store in _keys, which is a v8::Global
-    _keys.Reset(context->isolate(), keys);
+    _keys.Reset(core->isolate(), keys);
     
     // size can be helpful to have in a cached form
     _size = keys->Length();
@@ -73,11 +73,11 @@ bool JSIterator::valid()
 Php::Value JSIterator::current()
 {
     // make sure there is a scope
-    Scope scope(_context);
+    Scope scope(_core);
     
     // get the object and keys in a local variables
-    v8::Local<v8::Object> object(_object.Get(_context->isolate()));
-    v8::Local<v8::Array> keys(_keys.Get(_context->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
+    v8::Local<v8::Array> keys(_keys.Get(_core->isolate()));
     
     // retrieve the current key
     auto key = keys->Get(scope, _position);
@@ -88,7 +88,7 @@ Php::Value JSIterator::current()
     if (key.IsEmpty()) return nullptr;
     
     // expose to php space
-    return ToPhp(_context->isolate(), value.ToLocalChecked());
+    return ToPhp(_core->isolate(), value.ToLocalChecked());
 }
 
 /**
@@ -98,17 +98,17 @@ Php::Value JSIterator::current()
 Php::Value JSIterator::key()
 {
     // make sure there is a scope
-    Scope scope(_context);
+    Scope scope(_core);
     
     // get the keys in a local variable
-    v8::Local<v8::Array> keys(_keys.Get(_context->isolate()));
+    v8::Local<v8::Array> keys(_keys.Get(_core->isolate()));
 
     // retrieve the current key
     auto key = keys->Get(scope, _position);
     if (key.IsEmpty()) return nullptr;
     
     // retrieve the current key, the value and convert it
-    return ToPhp(_context->isolate(), key.ToLocalChecked());
+    return ToPhp(_core->isolate(), key.ToLocalChecked());
 }
 
 /**

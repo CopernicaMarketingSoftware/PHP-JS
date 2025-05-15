@@ -18,7 +18,7 @@
  */
 #include <phpcpp.h>
 #include <v8.h>
-#include <context.h>
+#include <core.h>
 
 /**
  *  Begin of namespace
@@ -32,10 +32,10 @@ class JSIterator : public Php::Iterator
 {
 private:
     /**
-     *  The javascript context
-     *  @var std::shared_ptr<Context>
+     *  The javascript core
+     *  @var std::shared_ptr<Core>
      */
-    std::shared_ptr<Context> _context;
+    std::shared_ptr<Core> _core;
 
     /**
      *  The underlying ecmascript object
@@ -65,10 +65,10 @@ public:
     /**
      *  Constructor
      *  @param  base        The base that PHP-CPP insists on
-     *  @param  context     The javascript context
+     *  @param  core        The javascript core
      *  @param  object      The object to iterate
      */
-    JSIterator(Php::Base *base, const std::shared_ptr<Context> &context, const v8::Local<v8::Object> &object);
+    JSIterator(Php::Base *base, const std::shared_ptr<Core> &core, const v8::Local<v8::Object> &object);
 
     /**
      *  Destructor
