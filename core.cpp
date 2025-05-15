@@ -73,10 +73,11 @@ void Core::release()
 v8::Local<v8::Value> Core::wrap(const Php::Value &object)
 {
     // if the object is already known to be a JS\Object
+    // @todo also check if it comes from the same core
     if (object.instanceOf("JS\\Object")) return JSObject::unwrap(object);
     
     // check the prototypes that we have
-    for (auto &prototype : _prototypes)
+    for (auto &prototype : _templates)
     {
         // is this one compatible with the object
         if (!prototype->matches(object)) continue;
@@ -85,11 +86,11 @@ v8::Local<v8::Value> Core::wrap(const Php::Value &object)
         return prototype->apply(object);
     }
     
-    // we need a new prototype
-    _prototypes.emplace_back(new ObjectTemplate(_isolate, object));
+    // we need a new template
+    _templates.emplace_back(new Template(_isolate, object));
     
     // use it
-    return _prototypes.back()->apply(object);
+    return _templates.back()->apply(object);
 }
 
 /**

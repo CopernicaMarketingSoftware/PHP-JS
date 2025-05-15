@@ -1,7 +1,7 @@
 /**
- *  ObjectTemplate.cpp
+ *  Template.cpp
  * 
- *  Implementation file for the ObjectTemplate class.
+ *  Implementation file for the Template class.
  * 
  *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
  *  @copyright 2025 Copernica BV
@@ -10,7 +10,7 @@
 /**
  *  Dependencies
  */
-#include "objecttemplate.h"
+#include "template.h"
 #include "core.h"
 #include "scope.h"
 #include "linker.h"
@@ -62,7 +62,7 @@ static uint32_t findMax(const Php::Value &object)
  *  @param  isolate
  *  @param  object
  */
-ObjectTemplate::ObjectTemplate(v8::Isolate *isolate, const Php::Value &value) : 
+Template::Template(v8::Isolate *isolate, const Php::Value &value) : 
     _isolate(isolate),
     _realarray(value.isArray()),
     _arrayaccess(value.instanceOf("ArrayAccess")),
@@ -80,30 +80,30 @@ ObjectTemplate::ObjectTemplate(v8::Isolate *isolate, const Php::Value &value) :
     
     // register the property handlers for objects and arrays
     tpl->SetHandler(v8::NamedPropertyHandlerConfiguration(
-        &ObjectTemplate::getProperty,                                   // get access to a property         
-        &ObjectTemplate::setProperty,                                   // assign a property
-        nullptr,                                                        // query to check which properties exist
-        nullptr,                                                        // remove a property
-        &ObjectTemplate::enumerateProperties,                           // enumerate over an object
-        self                                                            // self-reference
+        &Template::getProperty,                                   // get access to a property         
+        &Template::setProperty,                                   // assign a property
+        nullptr,                                                  // query to check which properties exist
+        nullptr,                                                  // remove a property
+        &Template::enumerateProperties,                           // enumerate over an object
+        self                                                      // self-reference
     ));
 
     if (_arrayaccess || _realarray) std::cout << "set-index-prooerty-handles" << std::endl;
     
     // for ArrayAccess objects we also configure callbacks to get access to properties by their ID
     if (_arrayaccess || _realarray) tpl->SetHandler(v8::IndexedPropertyHandlerConfiguration(
-        &ObjectTemplate::getIndex,                                      // get access to an index
-        &ObjectTemplate::setIndex,                                      // assign a property by index
-        nullptr,                                                        // query to check which properties exist
-        nullptr,                                                        // remove a property
-        _realarray ? nullptr : &ObjectTemplate::enumerateIndexes,       // enumerate over an object based on the index  // @todo I wonder if this is correct! ArrayAccess does not necessarily imply indexed access
-        self                                                            // self-reference
+        &Template::getIndex,                                      // get access to an index
+        &Template::setIndex,                                      // assign a property by index
+        nullptr,                                                  // query to check which properties exist
+        nullptr,                                                  // remove a property
+        _realarray ? nullptr : &Template::enumerateIndexes,       // enumerate over an object based on the index  // @todo I wonder if this is correct! ArrayAccess does not necessarily imply indexed access
+        self                                                      // self-reference
     ));
 
     if (_callable) std::cout << "set call-as-function" << std::endl;
     
     // when object is callable, we need to install a callback too
-    if (_callable) tpl->SetCallAsFunctionHandler(&ObjectTemplate::call, self);
+    if (_callable) tpl->SetCallAsFunctionHandler(&Template::call, self);
     
     // make sure handler is preserved
     _template.Reset(isolate, tpl);
@@ -112,7 +112,7 @@ ObjectTemplate::ObjectTemplate(v8::Isolate *isolate, const Php::Value &value) :
 /**
  *  Destructor
  */
-ObjectTemplate::~ObjectTemplate()
+Template::~Template()
 {
     // forget handle
     _template.Reset();
@@ -123,7 +123,7 @@ ObjectTemplate::~ObjectTemplate()
  *  @param  value
  *  @return bool
  */
-bool ObjectTemplate::matches(const Php::Value &value) const
+bool Template::matches(const Php::Value &value) const
 {
     // check whetner the object has certain features
     if (_realarray != value.isArray()) return false;
@@ -139,7 +139,7 @@ bool ObjectTemplate::matches(const Php::Value &value) const
  *  @param  value
  *  @return v8::Local<v8::Object>
  */
-v8::Local<v8::Value> ObjectTemplate::apply(const Php::Value &value) const
+v8::Local<v8::Value> Template::apply(const Php::Value &value) const
 {
     // we need the template locally
     v8::Local<v8::ObjectTemplate> tpl(_template.Get(_isolate));
@@ -172,7 +172,7 @@ v8::Local<v8::Value> ObjectTemplate::apply(const Php::Value &value) const
  *  @param  property    the property to retrieve
  *  @param  info        callback info
  */
-v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value> &info)
+v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
     // if the retrieved property is a symbol
     if (property->IsSymbol()) return getSymbol(property.As<v8::Symbol>(), info);
@@ -278,7 +278,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
         data->Set(scope, 1, prop).Check();
         
         // create a new function object (with the data holding "this" and the name)
-        auto func = v8::Function::New(scope, &ObjectTemplate::method, data).ToLocalChecked();
+        auto func = v8::Function::New(scope, &Template::method, data).ToLocalChecked();
         
         // create the function to be called
         info.GetReturnValue().Set(func);
@@ -298,7 +298,7 @@ v8::Intercepted ObjectTemplate::getProperty(v8::Local<v8::Name> property, const 
  *  @param  symbol      the symbol to retrieve
  *  @param  info        callback info
  */
-v8::Intercepted ObjectTemplate::getSymbol(v8::Local<v8::Symbol> symbol, const v8::PropertyCallbackInfo<v8::Value> &info)
+v8::Intercepted Template::getSymbol(v8::Local<v8::Symbol> symbol, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
     // create a handlescope
     Scope scope(info.GetIsolate());
@@ -317,7 +317,7 @@ v8::Intercepted ObjectTemplate::getSymbol(v8::Local<v8::Symbol> symbol, const v8
  *  Convert to a string
  *  @param  info        callback info
  */
-v8::Intercepted ObjectTemplate::getString(const v8::PropertyCallbackInfo<v8::Value> &info)
+v8::Intercepted Template::getString(const v8::PropertyCallbackInfo<v8::Value> &info)
 {
     // the object that is being accessed
     Php::Value object = Linker(info.GetIsolate(), info.This()).value();
@@ -336,7 +336,7 @@ v8::Intercepted ObjectTemplate::getString(const v8::PropertyCallbackInfo<v8::Val
  *  Convert to an iterator
  *  @param  info        callback info
  */
-v8::Intercepted ObjectTemplate::getIterator(const v8::PropertyCallbackInfo<v8::Value> &info)
+v8::Intercepted Template::getIterator(const v8::PropertyCallbackInfo<v8::Value> &info)
 {
     // create a handlescope
     Scope scope(info.GetIsolate());
@@ -383,9 +383,9 @@ v8::Intercepted ObjectTemplate::getIterator(const v8::PropertyCallbackInfo<v8::V
  *  @param  info        callback info
  *  @return v8::Intercepted
  */
-v8::Intercepted ObjectTemplate::getIndex(unsigned index, const v8::PropertyCallbackInfo<v8::Value> &info)
+v8::Intercepted Template::getIndex(unsigned index, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
-    std::cout << "ObjectTemplate::getIndex" << std::endl;
+    std::cout << "Template::getIndex" << std::endl;
 
     // the object that is being accessed
     Php::Value object = Linker(info.GetIsolate(), info.This()).value();
@@ -427,9 +427,9 @@ v8::Intercepted ObjectTemplate::getIndex(unsigned index, const v8::PropertyCallb
  *  @param  input       the new property value
  *  @param  info        callback info
  */
-v8::Intercepted ObjectTemplate::setProperty(v8::Local<v8::Name> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info)
+v8::Intercepted Template::setProperty(v8::Local<v8::Name> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info)
 {
-    std::cout << "ObjectTemplate::SetProperty" << std::endl;
+    std::cout << "Template::SetProperty" << std::endl;
 
     // @todo check implementation for arrays
     
@@ -464,9 +464,9 @@ v8::Intercepted ObjectTemplate::setProperty(v8::Local<v8::Name> property, v8::Lo
  *  @param  input       the new property value
  *  @param  info        callback info
  */
-v8::Intercepted ObjectTemplate::setIndex(unsigned index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info)
+v8::Intercepted Template::setIndex(unsigned index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info)
 {
-    std::cout << "ObjectTemplate::setIndex" << std::endl;
+    std::cout << "Template::setIndex" << std::endl;
 
     // the object that is being accessed
     Php::Value object = Linker(info.GetIsolate(), info.This()).value();
@@ -503,9 +503,9 @@ v8::Intercepted ObjectTemplate::setIndex(unsigned index, v8::Local<v8::Value> in
  *  Retrieve a list of string properties for enumeration
  *  @param  info        callback info
  */
-void ObjectTemplate::enumerateProperties(const v8::PropertyCallbackInfo<v8::Array> &info)
+void Template::enumerateProperties(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
-    std::cout << "ObjectTemplate::enumerate-properties" << std::endl;
+    std::cout << "Template::enumerate-properties" << std::endl;
 
 
     // @todo check implementation for arrays!
@@ -544,9 +544,9 @@ void ObjectTemplate::enumerateProperties(const v8::PropertyCallbackInfo<v8::Arra
  *  Retrieve a list of integer properties for enumeration
  *  @param  info        callback info
  */
-void ObjectTemplate::enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> &info)
+void Template::enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
-    std::cout << "ObjectTemplate::enumerate-indexes" << std::endl;
+    std::cout << "Template::enumerate-indexes" << std::endl;
     
     // @todo implementation
 }
@@ -555,7 +555,7 @@ void ObjectTemplate::enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> 
  *  A function is called that happens to be a method
  *  @param  into        callback info
  */
-void ObjectTemplate::method(const v8::FunctionCallbackInfo<v8::Value>& info)
+void Template::method(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
     // we might need a scope
     Scope scope(info.GetIsolate());
@@ -587,7 +587,7 @@ void ObjectTemplate::method(const v8::FunctionCallbackInfo<v8::Value>& info)
  *  The object is called as if it was a function
  *  @param  into        callback info
  */
-void ObjectTemplate::call(const v8::FunctionCallbackInfo<v8::Value>& info)
+void Template::call(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
     // the object that is being accessed
     Php::Value object = Linker(info.GetIsolate(), info.This()).value();

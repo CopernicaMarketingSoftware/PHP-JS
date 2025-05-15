@@ -1,7 +1,7 @@
 /**
- *  ObjectTemplate.h
+ *  Template.h
  * 
- *  The template for regular PHP objects that are exposed to JS space.
+ *  The template for regular PHP objects and arrays that are exposed to JS space.
  * 
  *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
  *  @copyright 2025 Copernica BV
@@ -26,7 +26,7 @@ namespace JS {
 /**
  *  Class definition
  */
-class ObjectTemplate
+class Template
 {
 protected:
     /**
@@ -134,12 +134,12 @@ public:
      *  @param  isolate
      *  @param  value
      */
-    ObjectTemplate(v8::Isolate *isolate, const Php::Value &value);
+    Template(v8::Isolate *isolate, const Php::Value &value);
     
     /**
      *  Destructor
      */
-    virtual ~ObjectTemplate();
+    virtual ~Template();
 
     /**
      *  Is this template useful for a certain object

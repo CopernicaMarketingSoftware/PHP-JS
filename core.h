@@ -18,7 +18,7 @@
 #include <phpcpp.h>
 #include "platform.h"
 #include "isolate.h"
-#include "objecttemplate.h"
+#include "template.h"
 
 /**
  *  Start namespace
@@ -60,7 +60,7 @@ private:
      *  Templates for wrapping objects
      *  @var std::vector
      */
-    std::vector<std::unique_ptr<ObjectTemplate>> _prototypes;
+    std::vector<std::unique_ptr<Template>> _templates;
 
     /**
      *  The context
