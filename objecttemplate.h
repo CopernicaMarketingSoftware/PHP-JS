@@ -57,56 +57,6 @@ private:
      *  @param  info        callback info
      *  @return v8::Intercepted
      */
-//    static v8::Intercepted getPropertyCB(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value> &info);
-
-    /**
-     *  Retrieve a property or function from the object
-     *  @param  index       The index to find the property
-     *  @param  info        callback info
-     *  @return v8::Intercepted
-     */
-//    static v8::Intercepted getIndexCB(unsigned index, const v8::PropertyCallbackInfo<v8::Value> &info);
-
-    /**
-     *  Set a property or function on the object
-     *  @param  property    the property to update
-     *  @param  input       the new property value
-     *  @param  info        callback info
-     */
-//    static v8::Intercepted setPropertyCB(v8::Local<v8::Name> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info);
-
-    /**
-     *  Set a property or function on the object
-     *  @param  index       The index to update
-     *  @param  input       the new property value
-     *  @param  info        callback info
-     */
-//    static v8::Intercepted setIndexCB(unsigned index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info);
-
-    /**
-     *  Retrieve a list of string properties for enumeration
-     *  @param  info        callback info
-     */
-//    static void enumeratePropertiesCB(const v8::PropertyCallbackInfo<v8::Array> &info);
-    
-    /**
-     *  Retrieve a list of integer properties for enumeration
-     *  @param  info        callback info
-     */
-//    static void enumerateIndexesCB(const v8::PropertyCallbackInfo<v8::Array> &info);
-    
-    /**
-     *  The object is called as if it was a function
-     *  @param  into        callback info
-     */
-//    static void callCB(const v8::FunctionCallbackInfo<v8::Value>& info);
-
-    /**
-     *  Retrieve a property or function from the object
-     *  @param  property    The name to find the property
-     *  @param  info        callback info
-     *  @return v8::Intercepted
-     */
     static v8::Intercepted getProperty(v8::Local<v8::Name> property, const v8::PropertyCallbackInfo<v8::Value> &info);
 
     /**
