@@ -12,7 +12,7 @@
 #include <phpcpp.h>
 #include "jscontext.h"
 #include "jsobject.h"
-#include "newplatform.h"
+#include "platform.h"
 
 /**
  *  The VERSION macro is going to be used as string with surrounded quotes

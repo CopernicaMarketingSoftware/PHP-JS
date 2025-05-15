@@ -1,47 +1,48 @@
 /**
- *  context.h
- *
- *  The main javascript class, used for assigning variables
- *  and executing javascript
- *
- *  @copyright 2015 - 2025 Copernica B.V.
+ *  Context.cpp
+ * 
+ *  Implementation file for the context class
+ * 
+ *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
+ *  @copyright 2025 Copernica BV
  */
-
-#if false
 
 /**
  *  Dependencies
  */
-#include "external.h"
 #include "context.h"
-#include "isolate.h"
-#include "value.h"
+#include "fromphp.h"
+#include "tophp.h"
+#include "scope.h"
+#include "jsobject.h"
 
-#include <condition_variable>
-#include <chrono>
-#include <thread>
-#include <mutex>
-#include <atomic>
+
+#include <iostream>
 
 /**
- *  Start namespace
+ *  Begin of namespace
  */
 namespace JS {
 
 /**
  *  Constructor
  */
-Context::Context()
+Context::Context() : _platform(Platform::instance()), _isolate(this)
 {
-    // temporary handle, necessary to store the values before the are put in the unique persistent handle
-    // note, since we want this variable to fall out of scope, we cannot use member initialization
-    v8::HandleScope scope(Isolate::get());
+    // when we access the isolate, we need a scope
+    v8::HandleScope scope(_isolate);
+    
+    // create a context
+    v8::Local<v8::Context> context(v8::Context::New(_isolate));
 
-    // now create the context
-    _context = v8::Context::New(Isolate::get(), nullptr);
-
-    // store a link to ourselves
-    _context->SetAlignedPointerInEmbedderData(1, this);
+    // we want to persist the context
+    _context.Reset(_isolate, context);
+    
+    // symbol for linking js and php objects together
+    v8::Local<v8::Private> key = v8::Private::ForApi(_isolate, v8::String::NewFromUtf8Literal(_isolate, "js2php"));
+    
+    // persist the key
+    _symbol.Reset(_isolate, key);
 }
 
 /**
@@ -49,119 +50,146 @@ Context::Context()
  */
 Context::~Context()
 {
-    // destroy all externals
-    for (auto *external : _externals) delete external;
+    // @todo cleanup of global members?
+    
+    
 }
 
 /**
- *  Retrieve the currently active context
- *
- *  @return The current context, or a nullptr
+ *  Release the context after it is no longer in use by a Js\Context object
  */
-Context *Context::current()
+void Context::release()
 {
-    // retrieve the current context
-    auto context = Isolate::get()->GetEnteredContext();
-
-    // if no context is available we are out of options
-    if (context.IsEmpty()) return nullptr;
-
-    // retrieve the context from the handle
-    return reinterpret_cast<Context*>(context->GetAlignedPointerFromEmbedderData(1));
+    // @todo some initial cleanup?
+    
+    
 }
 
 /**
- *  Track a new external object
- *
- *  @var    External*
+ *  Wrap a certain PHP object into a javascript object
+ *  @param  object      MUST be an array or object!
+ *  @return v8::Local<v8::Value>
  */
-void Context::track(External *external)
+v8::Local<v8::Value> Context::wrap(const Php::Value &object)
 {
-    // add to the list of tracked references
-    _externals.insert(external);
-}
-
-/**
- *  Unregister an external object
- *
- *  @var    external    The external object we no longer to track
- */
-void Context::untrack(External *external)
-{
-    // remove from the list of tracked references
-    _externals.erase(external);
+    // if the object is already known to be a JS\Object
+    if (object.instanceOf("JS\\Object")) return JSObject::unwrap(object);
+    
+    // check the prototypes that we have
+    for (auto &prototype : _prototypes)
+    {
+        // is this one compatible with the object
+        if (!prototype->matches(object)) continue;
+        
+        // we can apply this prototype
+        return prototype->apply(object);
+    }
+    
+    // we need a new prototype
+    _prototypes.emplace_back(new ObjectTemplate(_isolate, object));
+    
+    // use it
+    return _prototypes.back()->apply(object);
 }
 
 /**
  *  Assign a variable to the javascript context
- *
- *  @param  params  array of parameters:
- *                  -   string  name of property to assign  required
- *                  -   mixed   property value to assign    required
- *                  -   integer property attributes         optional
- *
- *  The property attributes can be one of the following values
- *
- *  - ReadOnly
- *  - DontEnum
- *  - DontDelete
- *
- *  If not specified, the property will be writable, enumerable and
- *  deletable.
+ *  @param  name        name of property to assign  required
+ *  @param  value       value to be assigned
+ *  @param  attribytes  property attributes
+ *  @return Php::Value
  */
-void Context::assign(Php::Parameters &params)
+Php::Value Context::assign(const Php::Value &name, const Php::Value &value, const Php::Value &attributes)
 {
-    // create a local "scope" and "enter" our context
-    v8::HandleScope         scope(Isolate::get());
-    v8::Context::Scope      contextScope(_context);
+    // scope for the context
+    Scope scope(shared_from_this());
 
     // retrieve the global object from the context
-    v8::Local<v8::Object>   global(_context->Global());
+    v8::Local<v8::Object> global(scope.global());
 
     // the attribute for the newly assigned property
-    v8::PropertyAttribute   attribute(v8::None);
+    //v8::PropertyAttribute   attribute(v8::None);
+    //
+    //// if an attribute was given, assign it
+    //if (params.size() > 2)
+    //{
+    //    // check the attribute that was selected
+    //    switch ((int16_t)params[2])
+    //    {
+    //        case v8::None:          attribute = v8::None;       break;
+    //        case v8::ReadOnly:      attribute = v8::ReadOnly;   break;
+    //        case v8::DontDelete:    attribute = v8::DontDelete; break;
+    //        case v8::DontEnum:      attribute = v8::DontEnum;   break;
+    //    }
+    //}
 
-    // if an attribute was given, assign it
-    if (params.size() > 2)
-    {
-        // check the attribute that was selected
-        switch ((int16_t)params[2])
-        {
-            case v8::None:          attribute = v8::None;       break;
-            case v8::ReadOnly:      attribute = v8::ReadOnly;   break;
-            case v8::DontDelete:    attribute = v8::DontDelete; break;
-            case v8::DontEnum:      attribute = v8::DontEnum;   break;
-        }
-    }
+    // get the value
+    // @todo why this var?
+    FromPhp value2(_isolate, value);
 
     // and store the value
-    global->ForceSet(value(params[0]), value(params[1]), attribute);
+    v8::Maybe<bool> result = global->Set(scope, FromPhp(_isolate, name), value2); //FromPhp(shared_from_this(), value));
+    
+    // check for success
+    return result.IsJust() && result.FromJust();
 }
 
 /**
  *  Parse a piece of javascript code
- *
- *  @param  params  array with one parameter: the code to execute
+ *  @param  script      the code to execute
+ *  @param  timeout     possible timeout in seconds
  *  @return Php::Value
  *  @throws Php::Exception
  */
-Php::Value Context::evaluate(Php::Parameters &params)
+Php::Value Context::evaluate(const Php::Value &script, const Php::Value &timeout)
 {
     // retrieve the optional timeout variable
-    int timeout = (params.size() >= 2 ? params[1].numericValue() : 0);
+    // @todo optionally enable timeouts
+    //int timeout = (params.size() >= 2 ? params[1].numericValue() : 0);
 
-    // create a handle, so that all variables fall "out of scope"
-    v8::HandleScope         scope(Isolate::get());
+    // scope for the isolate
+    v8::Isolate::Scope iscope(_isolate);
 
-    // enter the compilation/execution scope
-    v8::Context::Scope      contextScope(_context);
+    // stack-allocated handle scope
+    v8::HandleScope hscope(_isolate);
+    
+    // we need the context in a local handle
+    v8::Local<v8::Context> context(_context.Get(_isolate));
+    
+    // enter the context for compiling and running the script
+    v8::Context::Scope cscope(context);
 
     // catch any errors that occur while either compiling or running the script
-    v8::TryCatch            catcher;
-
+    // @todo do we need something with this?
+    //v8::TryCatch catcher;
+    
+    // @todo force script to be a string?
+    
     // compile the code into a script
-    v8::Local<v8::String>   source(v8::String::NewFromUtf8(Isolate::get(), params[0]));
-    v8::Local<v8::Script>   script(v8::Script::Compile(source));
+    // @todo what does the ToLocalChecked() stuff? what happens on failure?
+    v8::Local<v8::String> source = v8::String::NewFromUtf8(_isolate, script.rawValue()).ToLocalChecked();
+
+    // get the compiled program
+    // @todo should we be checking for errors?
+    v8::Local<v8::Script> compiled = v8::Script::Compile(context, source).ToLocalChecked();
+
+    // Run the script to get the result.
+    v8::MaybeLocal<v8::Value> result = compiled->Run(context);
+
+    // check for result
+    // @todo maybe better error-report?
+    if (result.IsEmpty()) return nullptr;
+    
+    // @todo run event loop
+    
+    
+    
+    
+    // expose result to php
+    return ToPhp(_isolate, result.ToLocalChecked());
+
+    /*
+
 
     // we create a mutex and a condition_variable so we can use wait_until on
     // another thread which we can stop from our main thread. We use this to maybe abort
@@ -244,12 +272,13 @@ Php::Value Context::evaluate(Php::Parameters &params)
 
     // return the result
     return value(result);
+    */
 }
-
+    
+    
+    
 /**
- *  End namespace
+ *  End of namespace
  */
 }
 
-
-#endif

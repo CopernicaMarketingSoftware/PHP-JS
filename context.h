@@ -16,11 +16,9 @@
  *  Dependencies
  */
 #include <phpcpp.h>
-#include "newplatform.h"
+#include "platform.h"
 #include "isolate.h"
 #include "objecttemplate.h"
-//#include <v8.h>
-//#include "stack.h"
 
 /**
  *  Start namespace
