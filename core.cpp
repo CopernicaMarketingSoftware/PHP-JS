@@ -102,6 +102,8 @@ v8::Local<v8::Value> Core::wrap(const Php::Value &object)
  */
 Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const Php::Value &attributes)
 {
+    // @todo avoid that other contexts are assigned
+    
     // scope for the context
     Scope scope(shared_from_this());
 
@@ -109,6 +111,7 @@ Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const P
     v8::Local<v8::Object> global(scope.global());
 
     // the attribute for the newly assigned property
+    // @todo enable this?
     //v8::PropertyAttribute   attribute(v8::None);
     //
     //// if an attribute was given, assign it
