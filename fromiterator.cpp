@@ -1,7 +1,7 @@
 /**
- *  Iterator.cpp
+ *  FromIterator.cpp
  * 
- *  Implementation file of the Iterator class
+ *  Implementation file of the FromIterator class
  * 
  *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
  *  @copyright 2025 Copernica BV
@@ -10,7 +10,7 @@
 /**
  *  Dependencies
  */
-#include "iterator.h"
+#include "fromiterator.h"
 #include "scope.h"
 
 
@@ -27,7 +27,7 @@ namespace JS {
  *  @param  object      the object that will be returned
  *  @param  value       iterable php object
  */
-Iterator::Iterator(v8::Isolate *isolate, const Php::Value &value)
+FromIterator::FromIterator(v8::Isolate *isolate, const Php::Value &value)
 {
     // @todo should we be calling rewind() right away?
     
@@ -52,8 +52,8 @@ Iterator::Iterator(v8::Isolate *isolate, const Php::Value &value)
     auto retlabel = v8::String::NewFromUtf8Literal(isolate, "return");
     
     // we need the next and return methods
-    auto nxtmethod = v8::Function::New(scope, &Iterator::nxtmethod).ToLocalChecked();
-    auto retmethod = v8::Function::New(scope, &Iterator::retmethod).ToLocalChecked();
+    auto nxtmethod = v8::Function::New(scope, &FromIterator::nxtmethod).ToLocalChecked();
+    auto retmethod = v8::Function::New(scope, &FromIterator::retmethod).ToLocalChecked();
     
     // install them on the object
     _iterator->Set(scope, nxtlabel, nxtmethod).Check();
@@ -69,7 +69,7 @@ Iterator::Iterator(v8::Isolate *isolate, const Php::Value &value)
  *  @param  obj
  *  @return Data*
  */
-Iterator::Data *Iterator::restore(v8::Isolate *isolate, const v8::Local<v8::Object> &obj)
+FromIterator::Data *FromIterator::restore(v8::Isolate *isolate, const v8::Local<v8::Object> &obj)
 {
     // we need the symbol for linking pointers to objects
     auto symbol = Core::upgrade(isolate)->symbol().Get(isolate);
@@ -93,7 +93,7 @@ Iterator::Data *Iterator::restore(v8::Isolate *isolate, const v8::Local<v8::Obje
  *  @param  obj
  *  @return Data*
  */
-void Iterator::destruct(v8::Isolate *isolate, const v8::Local<v8::Object> &obj)
+void FromIterator::destruct(v8::Isolate *isolate, const v8::Local<v8::Object> &obj)
 {
     // get the underlying data
     auto *data = restore(isolate, obj);
@@ -115,7 +115,7 @@ void Iterator::destruct(v8::Isolate *isolate, const v8::Local<v8::Object> &obj)
  *  Method that is called by v8 when the next item is requested
  *  @param  args
  */
-void Iterator::nxtmethod(const v8::FunctionCallbackInfo<v8::Value> &args)
+void FromIterator::nxtmethod(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
     std::cout << "nxtmethod" << std::endl;
     
@@ -155,7 +155,7 @@ void Iterator::nxtmethod(const v8::FunctionCallbackInfo<v8::Value> &args)
  *  Method that is called when the iterator leaps out prematurely
  *  @param  args
  */
-void Iterator::retmethod(const v8::FunctionCallbackInfo<v8::Value> &args)
+void FromIterator::retmethod(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
     std::cout << "retmethod" << std::endl;
     

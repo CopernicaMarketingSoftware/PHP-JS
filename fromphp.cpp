@@ -38,6 +38,8 @@ FromPhp::FromPhp(v8::Isolate *isolate, const Php::Value &value)
     case Php::Type::Array:      _value = Core::upgrade(isolate)->wrap(value); return;
     default:                    _value = v8::Undefined(isolate); return;
     }
+    
+    // @todo do we also need Callable? the old code did support this!
 }
 
 /**

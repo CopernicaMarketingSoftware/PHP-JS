@@ -1,5 +1,5 @@
 /**
- *  Iterator.h
+ *  FromIterator.h
  * 
  *  Class that turns a PHP traversable object into something that
  *  is iterable in a javascript environment too.
@@ -26,7 +26,7 @@ namespace JS {
 /**
  *  Class definition
  */
-class Iterator
+class FromIterator
 {
 private:
     /**
@@ -135,12 +135,12 @@ public:
      *  @param  isolate     the isolate
      *  @param  value       iterable php object
      */
-    Iterator(v8::Isolate *isolate, const Php::Value &value);
+    FromIterator(v8::Isolate *isolate, const Php::Value &value);
 
     /**
      *  Private destructor (object is self-destructing)
      */
-    virtual ~Iterator() = default;
+    virtual ~FromIterator() = default;
 
     /**
      *  Cast to the local object

@@ -16,7 +16,7 @@
 #include "linker.h"
 #include "fromphp.h"
 #include "tophp.h"
-#include "iterator.h"
+#include "fromiterator.h"
 
 
 #include <iostream>
@@ -357,16 +357,16 @@ v8::Intercepted Template::getIterator(const v8::PropertyCallbackInfo<v8::Value> 
         auto retval = info.GetReturnValue();
         
         // if the object is already traversable
-        if (object.instanceOf("Iterator")) retval.Set(Iterator(info.GetIsolate(), object).value());
+        if (object.instanceOf("Iterator")) retval.Set(FromIterator(info.GetIsolate(), object).value());
         
         // of a can indirectly retrieve the iterator?
-        else if (object.instanceOf("IteratorAggregate")) retval.Set(Iterator(info.GetIsolate(), object.call("getIterator")).value());
+        else if (object.instanceOf("IteratorAggregate")) retval.Set(FromIterator(info.GetIsolate(), object.call("getIterator")).value());
         
         // arrays themselves can be iterated
-        else if (object.isArray()) retval.Set(Iterator(info.GetIsolate(), Php::Object("ArrayIterator", object)).value());
+        else if (object.isArray()) retval.Set(FromIterator(info.GetIsolate(), Php::Object("ArrayIterator", object)).value());
         
         // this should not happen
-        else retval.Set(Iterator(info.GetIsolate(), Php::Object("EmptyIterator")).value());
+        else retval.Set(FromIterator(info.GetIsolate(), Php::Object("EmptyIterator")).value());
 
     }).ToLocalChecked();
 
