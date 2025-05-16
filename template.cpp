@@ -221,19 +221,11 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
         // handled
         return v8::Intercepted::kYes;
     }
-// @todo implementation
-//    else if (object.isCallable("__toString") && (std::strcmp(*name, "valueOf") == 0 || std::strcmp(*name, "toString") == 0))
-//    {
-//        // create an array with the object and the __toString method to invoke
-//        Php::Array callable({ object, Php::Value{ "__toString", 10 } });
-//
-//        // create the function to be called
-//        info.GetReturnValue().Set(v8::FunctionTemplate::New(info.GetIsolate(), callback, Handle(std::move(callable)))->GetFunction());
-//
-//        // handled
-//        return v8::Intercepted::kYes;
-//
-//    }
+    else if (object.isCallable("__toString") && (std::strcmp(*name, "valueOf") == 0 || std::strcmp(*name, "toString") == 0))
+    {
+        // handle the to-string conversion
+        return getString(info);
+    }
     else if (is_callable)
     {
         // we need a handle scope
@@ -477,17 +469,17 @@ v8::Intercepted Template::setIndex(unsigned index, v8::Local<v8::Value> input, c
  */
 void Template::enumerateProperties(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
-    std::cout << "Template::enumerate-properties" << std::endl;
-
-
-    // @todo check implementation for arrays!
+    // some variables we need a couple of times
+    auto isolate = info.GetIsolate();
     
+    // handle scope
+    Scope scope(isolate);
     
     // the object that is being accessed
-    Php::Value object = Linker(info.GetIsolate(), info.This()).value();
+    Php::Value object = Linker(isolate, info.This()).value();
 
     // create a new array to store all the properties
-    v8::Local<v8::Array> properties(v8::Array::New(info.GetIsolate()));
+    v8::Local<v8::Array> properties(v8::Array::New(isolate));
 
     // there is no 'push' method on v8::Array, so we simply have
     // to 'Set' the property with the correct index, declared here
@@ -500,8 +492,7 @@ void Template::enumerateProperties(const v8::PropertyCallbackInfo<v8::Array> &in
         if (!property.first.isString()) continue;
 
         // add the property to the list
-        // @todo use Scope?
-        auto result = properties->Set(info.GetIsolate()->GetCurrentContext(), index++, FromPhp(info.GetIsolate(), property.first));
+        auto result = properties->Set(scope, index++, FromPhp(isolate, property.first));
         
         // leap out on error
         if (!result.IsJust() || !result.FromJust()) return;
@@ -509,7 +500,6 @@ void Template::enumerateProperties(const v8::PropertyCallbackInfo<v8::Array> &in
 
     // set the value as the 'return' parameter
     info.GetReturnValue().Set(properties);
-
 }
 
 /**
@@ -518,9 +508,37 @@ void Template::enumerateProperties(const v8::PropertyCallbackInfo<v8::Array> &in
  */
 void Template::enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> &info)
 {
-    std::cout << "Template::enumerate-indexes" << std::endl;
+    // some variables we need a couple of times
+    auto isolate = info.GetIsolate();
     
-    // @todo implementation
+    // handle scope
+    Scope scope(isolate);
+    
+    // the object that is being accessed
+    Php::Value object = Linker(isolate, info.This()).value();
+
+    // create a new array to store all the properties
+    v8::Local<v8::Array> properties(v8::Array::New(isolate));
+
+    // there is no 'push' method on v8::Array, so we simply have
+    // to 'Set' the property with the correct index, declared here
+    uint32_t index = 0;
+
+    // iterate over the properties in the object
+    for (auto &property : object)
+    {
+        // we only care about integer indices
+        if (!property.first.isNumeric()) continue;
+
+        // add the property to the list
+        auto result = properties->Set(scope, index++, FromPhp(isolate, property.first));
+        
+        // leap out on error
+        if (!result.IsJust() || !result.FromJust()) return;
+    }
+
+    // set the value as the 'return' parameter
+    info.GetReturnValue().Set(properties);
 }
 
 /**
