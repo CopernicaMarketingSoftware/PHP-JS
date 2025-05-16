@@ -27,37 +27,6 @@
 namespace JS {
 
 /**
- *  Find the highest existing numerical index in the object
- *  @param  object  The object to count
- *  @return the number of numeric, sequential keys
- * 
- * 
- *  @todo it is silly to call this on objects that implement Countable!
- */
-static uint32_t findMax(const Php::Value &object)
-{
-    // the variable to store count
-    int64_t result = 0;
-
-    // loop over all the properties
-    for (auto &property : object)
-    {
-        // is it numeric and greater than what we've seen before?
-        if (property.first.isNumeric() && property.first >= result)
-        {
-            // store it
-            result = property.first;
-
-            // add another one
-            ++result;
-        }
-    }
-
-    // return the number of keys in the object
-    return static_cast<uint32_t>(result);
-}
-
-/**
  *  Constructor
  *  @param  isolate
  *  @param  object
@@ -233,10 +202,10 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
         return v8::Intercepted::kYes;
     }
     // is it a countable object we want the length off?
-    else if (std::strcmp(*name, "length") == 0 && object.instanceOf("Countable"))
+    else if (std::strcmp(*name, "length") == 0 && (object.instanceOf("Countable") || object.isArray()))
     {
         // return the count from this object
-        info.GetReturnValue().Set(findMax(object));
+        info.GetReturnValue().Set(FromPhp(info.GetIsolate(), Php::call("count", object)));
 
         // handled
         return v8::Intercepted::kYes;
@@ -305,6 +274,9 @@ v8::Intercepted Template::getSymbol(v8::Local<v8::Symbol> symbol, const v8::Prop
 
     // to-string conversions
     if (symbol->Equals(scope, v8::Symbol::GetToStringTag(info.GetIsolate())).FromMaybe(false)) return getString(info);
+
+    // to-primitive conversions are also treated as to-strings
+    if (symbol->Equals(scope, v8::Symbol::GetToPrimitive(info.GetIsolate())).FromMaybe(false)) return getString(info);
     
     // to-iterator conversions
     if (symbol->Equals(scope, v8::Symbol::GetIterator(info.GetIsolate())).FromMaybe(false)) return getIterator(info);
