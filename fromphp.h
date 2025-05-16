@@ -26,16 +26,9 @@ namespace JS {
 /**
  *  Class definition
  */
-class FromPhp
+class FromPhp : public v8::Local<v8::Value>
 {
-private:
-    /**
-     *  The wrapped variable
-     *  @var 
-     */
-    v8::Local<v8::Value> _value;
-    
-public:
+   public:
     /**
      *  Constructor
      *  @param  isolate
@@ -49,16 +42,9 @@ public:
     virtual ~FromPhp() = default;
     
     /**
-     *  Expose the local value
-     *  @return  v8::Local<v8::Value>
+     *  Expose base class assignment
      */
-    const v8::Local<v8::Value> &local() const { return _value; }
-    
-    /**
-     *  Cast to a local value
-     *  @return v8::Local<v8::Value>
-     */
-    operator const v8::Local<v8::Value>& () const { return _value; }
+    using v8::Local<v8::Value>::operator=;
 };
     
 /**

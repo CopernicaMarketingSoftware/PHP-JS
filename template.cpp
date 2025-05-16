@@ -227,7 +227,7 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
         FromPhp value(info.GetIsolate(), object.get(*name, name.length()));
         
         // convert it to a javascript handle and return it
-        info.GetReturnValue().Set(value.local());
+        info.GetReturnValue().Set(value);
 
         // handled
         return v8::Intercepted::kYes;
@@ -247,7 +247,7 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
         FromPhp value(info.GetIsolate(), object.call("offsetGet", *name));
 
         // use the array access to retrieve the property
-        info.GetReturnValue().Set(value.local());
+        info.GetReturnValue().Set(value);
 
         // handled
         return v8::Intercepted::kYes;
@@ -326,7 +326,7 @@ v8::Intercepted Template::getString(const v8::PropertyCallbackInfo<v8::Value> &i
     if (!object.isObject() || !object.isCallable("__toString")) return v8::Intercepted::kNo;
     
     // set the return-value
-    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), object.call("__toString")).local());
+    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), object.call("__toString")));
         
     // handled
     return v8::Intercepted::kYes;
@@ -397,7 +397,7 @@ v8::Intercepted Template::getIndex(unsigned index, const v8::PropertyCallbackInf
         FromPhp value(info.GetIsolate(), object.get(static_cast<int64_t>(index)));
 
         // set the result
-        info.GetReturnValue().Set(v8::Global<v8::Value>(info.GetIsolate(), value.local()));
+        info.GetReturnValue().Set(v8::Global<v8::Value>(info.GetIsolate(), value));
 
         // call was handled
         return v8::Intercepted::kYes;
@@ -410,7 +410,7 @@ v8::Intercepted Template::getIndex(unsigned index, const v8::PropertyCallbackInf
         FromPhp value(info.GetIsolate(), object.call("offsetGet", static_cast<int64_t>(index)));
 
         // set the result
-        info.GetReturnValue().Set(v8::Global<v8::Value>(info.GetIsolate(), value.local()));
+        info.GetReturnValue().Set(v8::Global<v8::Value>(info.GetIsolate(), value));
         
         // call was handled
         return v8::Intercepted::kYes;
@@ -580,7 +580,7 @@ void Template::method(const v8::FunctionCallbackInfo<v8::Value>& info)
     auto result = object.call(*name);
 
     // store return value
-    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), result).local());
+    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), result));
 }
 
 /**
@@ -598,7 +598,7 @@ void Template::call(const v8::FunctionCallbackInfo<v8::Value>& info)
     auto result = object();
 
     // store return value
-    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), result).local());
+    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), result));
 }
 
 /**

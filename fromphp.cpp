@@ -27,16 +27,16 @@ FromPhp::FromPhp(v8::Isolate *isolate, const Php::Value &value)
 {
     // check the type
     switch (value.type()) {
-    case Php::Type::Null:       _value = v8::Null(isolate); return;
-    case Php::Type::Numeric:    _value = v8::Integer::New(isolate, value); return;
-    case Php::Type::Float:      _value = v8::Number::New(isolate, value); return;
-    case Php::Type::Bool:       _value = v8::Boolean::New(isolate, value); return;
-    case Php::Type::True:       _value = v8::Boolean::New(isolate, true); return;
-    case Php::Type::False:      _value = v8::Boolean::New(isolate, false); return;
-    case Php::Type::String:     _value = v8::String::NewFromUtf8(isolate, value).ToLocalChecked(); return;
-    case Php::Type::Object:     _value = Core::upgrade(isolate)->wrap(value); return;
-    case Php::Type::Array:      _value = Core::upgrade(isolate)->wrap(value); return;
-    default:                    _value = v8::Undefined(isolate); return;
+    case Php::Type::Null:       operator=(v8::Null(isolate)); return;
+    case Php::Type::Numeric:    operator=(v8::Integer::New(isolate, value)); return;
+    case Php::Type::Float:      operator=(v8::Number::New(isolate, value)); return;
+    case Php::Type::Bool:       operator=(v8::Boolean::New(isolate, value)); return;
+    case Php::Type::True:       operator=(v8::Boolean::New(isolate, true)); return;
+    case Php::Type::False:      operator=(v8::Boolean::New(isolate, false)); return;
+    case Php::Type::String:     operator=(v8::String::NewFromUtf8(isolate, value).ToLocalChecked()); return;
+    case Php::Type::Object:     operator=(Core::upgrade(isolate)->wrap(value)); return;
+    case Php::Type::Array:      operator=(Core::upgrade(isolate)->wrap(value)); return;
+    default:                    operator=(v8::Undefined(isolate)); return;
     }
     
     // @todo do we also need Callable? the old code did support this!
