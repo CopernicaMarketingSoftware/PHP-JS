@@ -1,5 +1,5 @@
 /**
- *  jsobject.h
+ *  PhpObject.h
  *
  *  Class that wraps around an ecmascript object and makes it available to PHP
  *  userspace.
@@ -32,7 +32,7 @@ class Core;
 /**
  *  Class definition
  */
-class JSObject : public Php::Base, public Php::Traversable
+class PhpObject : public Php::Base, public Php::Traversable
 {
 private:
     /**
@@ -55,18 +55,18 @@ public:
      *  @param  isolate     The isolate
      *  @param  object      The ecmascript object
      */
-    JSObject(v8::Isolate *isolate, const v8::Local<v8::Object> &object);
+    PhpObject(v8::Isolate *isolate, const v8::Local<v8::Object> &object);
 
     /**
      *  No copying
      *  @param  that
      */
-    JSObject(const JSObject &that) = delete;
+    PhpObject(const PhpObject &that) = delete;
 
     /**
      *  Destructor
      */
-    virtual ~JSObject();
+    virtual ~PhpObject();
     
     /**
      *  Helper method to unwrap an object

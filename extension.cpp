@@ -10,8 +10,8 @@
  *  Dependencies
  */
 #include <phpcpp.h>
-#include "jscontext.h"
-#include "jsobject.h"
+#include "php_context.h"
+#include "php_object.h"
 #include "platform.h"
 #include "names.h"
 
@@ -48,23 +48,23 @@ extern "C" {
         extension.add(Php::Constant(JS::Names::DontEnumerate, v8::DontEnum));
 
         // create our context class
-        Php::Class<JS::JSContext> context(JS::Names::Context);
+        Php::Class<JS::PhpContext> context(JS::Names::Context);
 
         // properties can be assigned
-        context.method<&JS::JSContext::assign>("assign", {
+        context.method<&JS::PhpContext::assign>("assign", {
             Php::ByVal("name", Php::Type::String, true),
             Php::ByVal("value", Php::Type::Null, true),
             Php::ByVal("attribute", Php::Type::Numeric, false)
         });
 
         // add a method to execute some script
-        context.method<&JS::JSContext::evaluate>("evaluate", {
+        context.method<&JS::PhpContext::evaluate>("evaluate", {
             Php::ByVal("script", Php::Type::String, true),
             Php::ByVal("timeout", Php::Type::Numeric, false)
         });
 
         // an empty class for exporting object from ecmascript
-        Php::Class<JS::JSObject> object(JS::Names::Object);
+        Php::Class<JS::PhpObject> object(JS::Names::Object);
 
         // add the classes to the extension
         extension.add(std::move(context));

@@ -1,5 +1,5 @@
 /**
- *  jsobject.cpp
+ *  PhpObject.cpp
  *
  *  Class that wraps around an ecmascript object and makes it available to PHP userspace.
  *
@@ -10,11 +10,11 @@
 /**
  *  Dependencies
  */
-#include "jsobject.h"
+#include "php_object.h"
 #include "scope.h"
 #include "fromphp.h"
 #include "tophp.h"
-#include "jsiterator.h"
+#include "php_iterator.h"
 
 /**
  *  Start namespace
@@ -26,14 +26,14 @@ namespace JS {
  *  @param  isolate     The isolate
  *  @param  object      The ecmascript object
  */
-JSObject::JSObject(v8::Isolate *isolate, const v8::Local<v8::Object> &object) :
+PhpObject::PhpObject(v8::Isolate *isolate, const v8::Local<v8::Object> &object) :
     _core(Core::upgrade(isolate)),
     _object(isolate, object) {}
 
 /**
  *  Destructor
  */
-JSObject::~JSObject()
+PhpObject::~PhpObject()
 {
     // forget the associated javascript object
     _object.Reset();
@@ -44,10 +44,10 @@ JSObject::~JSObject()
  *  @param  value
  *  @return v8::Local<v8::Object>
  */
-v8::Local<v8::Object> JSObject::unwrap(const Php::Value &value)
+v8::Local<v8::Object> PhpObject::unwrap(const Php::Value &value)
 {
     // get self-pointe
-    JSObject *self = (JSObject *)value.implementation();
+    PhpObject *self = (PhpObject *)value.implementation();
     
     // @todo check if the object comes from the same core!
     
@@ -60,7 +60,7 @@ v8::Local<v8::Object> JSObject::unwrap(const Php::Value &value)
  *  @param  name    Name of the property
  *  @return The requested property
  */
-Php::Value JSObject::__get(const Php::Value &name) const
+Php::Value PhpObject::__get(const Php::Value &name) const
 {
     // scope for the call
     Scope scope(_core);
@@ -84,7 +84,7 @@ Php::Value JSObject::__get(const Php::Value &name) const
  *  @param  name        Name of the property
  *  @param  property    New value for the property
  */
-void JSObject::__set(const Php::Value &name, const Php::Value &property)
+void PhpObject::__set(const Php::Value &name, const Php::Value &property)
 {
     // scope for the call
     Scope scope(_core);
@@ -101,7 +101,7 @@ void JSObject::__set(const Php::Value &name, const Php::Value &property)
  *  @param  name        Name of the property
  *  @return Is the property set
  */
-bool JSObject::__isset(const Php::Value &name)
+bool PhpObject::__isset(const Php::Value &name)
 {
     // scope for the call
     Scope scope(_core);
@@ -122,7 +122,7 @@ bool JSObject::__isset(const Php::Value &name)
  *  @param  params      The input parameters
  *  @return The result of the function call
  */
-Php::Value JSObject::__call(const char *name, Php::Parameters &params)
+Php::Value PhpObject::__call(const char *name, Php::Parameters &params)
 {
     // scope for the call
     Scope scope(_core);
@@ -195,7 +195,7 @@ Php::Value JSObject::__call(const char *name, Php::Parameters &params)
  *  Cast to a string
  *  @return The result of the string conversion
  */
-Php::Value JSObject::__toString()
+Php::Value PhpObject::__toString()
 {
     // scope for the call
     Scope scope(_core);
@@ -217,7 +217,7 @@ Php::Value JSObject::__toString()
  *  Retrieve the iterator
  *  @return The iterator
  */
-Php::Iterator *JSObject::getIterator()
+Php::Iterator *PhpObject::getIterator()
 {
     // scope for the call
     Scope scope(_core);
@@ -226,7 +226,7 @@ Php::Iterator *JSObject::getIterator()
     v8::Local<v8::Object> object(_object.Get(_core->isolate()));
 
     // create a new iterator instance, cleaned up by PHP-CPP
-    return new JSIterator(this, _core, object);
+    return new PhpIterator(this, _core, object);
 }
 
 /**

@@ -12,10 +12,10 @@
  *  Dependencies
  */
 #include "tophp.h"
-#include "jsobject.h"
+#include "php_object.h"
 #include "core.h"
 #include "linker.h"
-#include "phparray.h"
+#include "php_array.h"
 #include "names.h"
 
 
@@ -122,7 +122,7 @@ ToPhp::ToPhp(v8::Isolate *isolate, const v8::Local<v8::Value> &input)
         if (linker.valid()) _value = linker.value();
 
         // otherwise we associate the object now
-        else _value = linker.attach(Php::Object(Names::Object, new JSObject(isolate, object)));
+        else _value = linker.attach(Php::Object(Names::Object, new PhpObject(isolate, object)));
     }
 
 
@@ -224,7 +224,7 @@ ToPhp::ToPhp(v8::Isolate *isolate, const v8::Local<v8::Value> &input)
         }
 
         // create a new js object and convert it to userspace
-        return Php::Object("JS\\Object", new JSObject(object));
+        return Php::Object("JS\\Object", new PhpObject(object));
     }
 
     // we sadly don't support this type of value

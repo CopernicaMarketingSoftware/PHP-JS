@@ -1,7 +1,7 @@
 /**
- *  JsIterator.cpp
+ *  PhpIterator.cpp
  * 
- *  Implementation file for the JSIterator class
+ *  Implementation file for the PhpIterator class
  * 
  *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
  *  @copyright 2025 Copernica BV
@@ -10,7 +10,7 @@
 /**
  *  Dependencies
  */
-#include "jsiterator.h"
+#include "php_iterator.h"
 #include "scope.h"
 #include "tophp.h"
 
@@ -25,7 +25,7 @@ namespace JS {
  *  @param  core        The javascript core
  *  @param  object      The object to iterate
  */
-JSIterator::JSIterator(Php::Base *base, const std::shared_ptr<Core> &core, const v8::Local<v8::Object> &object) : Php::Iterator(base),
+PhpIterator::PhpIterator(Php::Base *base, const std::shared_ptr<Core> &core, const v8::Local<v8::Object> &object) : Php::Iterator(base),
     _core(core),
     _object(core->isolate(), object)
 {
@@ -49,7 +49,7 @@ JSIterator::JSIterator(Php::Base *base, const std::shared_ptr<Core> &core, const
 /**
  *  Destructor
  */
-JSIterator::~JSIterator()
+PhpIterator::~PhpIterator()
 {
     // destruct handles
     _object.Reset();
@@ -60,7 +60,7 @@ JSIterator::~JSIterator()
  *  Is the iterator still valid?
  *  @return is an element present at the current offset
  */
-bool JSIterator::valid()
+bool PhpIterator::valid()
 {
     // we should not be out of bounds
     return _position < _size;
@@ -70,7 +70,7 @@ bool JSIterator::valid()
  *  Retrieve the current value
  *  @return value at current offset
  */
-Php::Value JSIterator::current()
+Php::Value PhpIterator::current()
 {
     // make sure there is a scope
     Scope scope(_core);
@@ -95,7 +95,7 @@ Php::Value JSIterator::current()
  *  Retrieve the current key
  *  @return the current key
  */
-Php::Value JSIterator::key()
+Php::Value PhpIterator::key()
 {
     // make sure there is a scope
     Scope scope(_core);
@@ -114,7 +114,7 @@ Php::Value JSIterator::key()
 /**
  *  Move ahead to the next item
  */
-void JSIterator::next()
+void PhpIterator::next()
 {
     // move to the next position
     ++_position;
@@ -123,7 +123,7 @@ void JSIterator::next()
 /**
  *  Start over at the beginning
  */
-void JSIterator::rewind()
+void PhpIterator::rewind()
 {
     // move back to the beginning
     _position = 0;

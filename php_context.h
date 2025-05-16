@@ -1,5 +1,5 @@
 /**
- *  JsContext.h
+ *  PhpContext.h
  *
  *  The main javascript context class as it is exposed to PHP space
  *
@@ -30,7 +30,7 @@ class External;
 /**
  *  Class definition
  */
-class JSContext : public Php::Base
+class PhpContext : public Php::Base
 {
 private:
     /**
@@ -43,18 +43,18 @@ public:
     /**
      *  Constructor
      */
-    JSContext();
+    PhpContext();
 
     /**
      *  No copying allowed
      *  @param  that    the object we cannot copy
      */
-    JSContext(const JSContext &that) = delete;
+    PhpContext(const PhpContext &that) = delete;
 
     /**
      *  Destructor
      */
-    virtual ~JSContext();
+    virtual ~PhpContext();
 
     /**
      *  Assign a variable to the javascript context

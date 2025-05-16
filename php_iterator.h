@@ -1,5 +1,5 @@
 /**
- *  JsIterator.h
+ *  PhpIterator.h
  *  
  *  Class to iterate over a JS\Object. This instance is constructed
  *  by the JSObject::getIterator() method.
@@ -28,7 +28,7 @@ namespace JS {
 /**
  *  Class definition
  */
-class JSIterator : public Php::Iterator
+class PhpIterator : public Php::Iterator
 {
 private:
     /**
@@ -68,12 +68,12 @@ public:
      *  @param  core        The javascript core
      *  @param  object      The object to iterate
      */
-    JSIterator(Php::Base *base, const std::shared_ptr<Core> &core, const v8::Local<v8::Object> &object);
+    PhpIterator(Php::Base *base, const std::shared_ptr<Core> &core, const v8::Local<v8::Object> &object);
 
     /**
      *  Destructor
      */
-    virtual ~JSIterator();
+    virtual ~PhpIterator();
 
     /**
      *  Is the iterator still valid?

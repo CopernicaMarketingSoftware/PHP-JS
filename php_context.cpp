@@ -1,7 +1,7 @@
 /**
- *  JsContext.cpp
+ *  PhpContext.cpp
  * 
- *  Implementation file for the JsContext class
+ *  Implementation file for the PhpContext class
  * 
  *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
  *  @copyright 2025 Copernica BV
@@ -10,7 +10,7 @@
 /**
  *  Dependencies
  */
-#include "jscontext.h"
+#include "php_context.h"
 
 /**
  *  Begin of namespace
@@ -20,12 +20,12 @@ namespace JS {
 /**
  *  Constructor
  */
-JSContext::JSContext() : _core(std::make_shared<Core>()) {}
+PhpContext::PhpContext() : _core(std::make_shared<Core>()) {}
 
 /**
  *  Destructor
  */
-JSContext::~JSContext()
+PhpContext::~PhpContext()
 {
     // tell the underlying context that it is no longer used in PHP 
     // space via a JS\Context instance (although it may still be referenced
@@ -49,7 +49,7 @@ JSContext::~JSContext()
  *  If not specified, the property will be writable, enumerable and
  *  deletable.
  */
-Php::Value JSContext::assign(Php::Parameters &params)
+Php::Value PhpContext::assign(Php::Parameters &params)
 {
     // pass on
     return _core->assign(params[0], params[1], params[2]);
@@ -62,7 +62,7 @@ Php::Value JSContext::assign(Php::Parameters &params)
  *  @return Php::Value
  *  @throws Php::Exception
  */
-Php::Value JSContext::evaluate(Php::Parameters &params)
+Php::Value PhpContext::evaluate(Php::Parameters &params)
 {
     // pass on
     return _core->evaluate(params[0], params[1]);
