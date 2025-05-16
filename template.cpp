@@ -15,7 +15,7 @@
 #include "scope.h"
 #include "linker.h"
 #include "fromphp.h"
-#include "tophp.h"
+#include "php_variable.h"
 #include "fromiterator.h"
 
 
@@ -441,7 +441,7 @@ v8::Intercepted Template::setProperty(v8::Local<v8::Name> property, v8::Local<v8
     try
     {
         // make the call
-        object.call("offsetSet", ToPhp(info.GetIsolate(), property), ToPhp(info.GetIsolate(), input));
+        object.call("offsetSet", PhpVariable(info.GetIsolate(), property), PhpVariable(info.GetIsolate(), input));
     }
     catch (const Php::Exception& exception)
     {
@@ -476,7 +476,7 @@ v8::Intercepted Template::setIndex(unsigned index, v8::Local<v8::Value> input, c
     try
     {
         // the variable to set
-        ToPhp value(info.GetIsolate(), input);
+        PhpVariable value(info.GetIsolate(), input);
         
         // if the underlying variable is an array
         if (object.isArray()) object.set(static_cast<int64_t>(index), value);

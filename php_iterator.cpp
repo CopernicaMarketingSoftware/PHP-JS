@@ -12,7 +12,7 @@
  */
 #include "php_iterator.h"
 #include "scope.h"
-#include "tophp.h"
+#include "php_variable.h"
 
 /**
  *  Begin of namespace
@@ -88,7 +88,7 @@ Php::Value PhpIterator::current()
     if (key.IsEmpty()) return nullptr;
     
     // expose to php space
-    return ToPhp(_core->isolate(), value.ToLocalChecked());
+    return PhpVariable(_core->isolate(), value.ToLocalChecked());
 }
 
 /**
@@ -108,7 +108,7 @@ Php::Value PhpIterator::key()
     if (key.IsEmpty()) return nullptr;
     
     // retrieve the current key, the value and convert it
-    return ToPhp(_core->isolate(), key.ToLocalChecked());
+    return PhpVariable(_core->isolate(), key.ToLocalChecked());
 }
 
 /**

@@ -12,7 +12,7 @@
  */
 #include "core.h"
 #include "fromphp.h"
-#include "tophp.h"
+#include "php_variable.h"
 #include "scope.h"
 #include "php_object.h"
 #include "names.h"
@@ -191,7 +191,7 @@ Php::Value Core::evaluate(const Php::Value &script, const Php::Value &timeout)
     
     
     // expose result to php
-    return ToPhp(_isolate, result.ToLocalChecked());
+    return PhpVariable(_isolate, result.ToLocalChecked());
 
     /*
 

@@ -11,7 +11,7 @@
 /**
  *  Dependencies
  */
-#include "tophp.h"
+#include "php_variable.h"
 #include "php_object.h"
 #include "core.h"
 #include "linker.h"
@@ -31,7 +31,7 @@ namespace JS {
  *  @param  isolate
  *  @param  input
  */
-ToPhp::ToPhp(v8::Isolate *isolate, const v8::Local<v8::Value> &input)
+PhpVariable::PhpVariable(v8::Isolate *isolate, const v8::Local<v8::Value> &input)
 {
     // if we received an invalid input we simply keep empty PHP value
     if (input.IsEmpty() || input->IsNull() || input->IsUndefined()) return;

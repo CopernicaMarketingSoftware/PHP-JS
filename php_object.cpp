@@ -13,7 +13,7 @@
 #include "php_object.h"
 #include "scope.h"
 #include "fromphp.h"
-#include "tophp.h"
+#include "php_variable.h"
 #include "php_iterator.h"
 
 /**
@@ -76,7 +76,7 @@ Php::Value PhpObject::__get(const Php::Value &name) const
     if (property.IsEmpty()) return Php::Base::__get(name);
 
     // convert the value to a PHP value
-    return ToPhp(_core->isolate(), property.ToLocalChecked());
+    return PhpVariable(_core->isolate(), property.ToLocalChecked());
 }
 
 /**
@@ -160,7 +160,7 @@ Php::Value PhpObject::__call(const char *name, Php::Parameters &params)
     auto result = method->Call(scope, object, args.size(), args.data());
     
     // on success
-    if (!result.IsEmpty()) return ToPhp(_core->isolate(), result.ToLocalChecked());
+    if (!result.IsEmpty()) return PhpVariable(_core->isolate(), result.ToLocalChecked());
     
     // a failure took place
     // @todo should we be capturing exceptions?
@@ -210,7 +210,7 @@ Php::Value PhpObject::__toString()
     if (result.IsEmpty()) return nullptr;
     
     // convert to php space
-    return ToPhp(_core->isolate(), result.ToLocalChecked());
+    return PhpVariable(_core->isolate(), result.ToLocalChecked());
 }
 
 /**

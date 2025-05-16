@@ -1,5 +1,5 @@
 /**
- *  ToPhp.h
+ *  PhpVariable.h
  * 
  *  Class that we use to convert a variable from javascript context
  *  back into PHP context
@@ -27,7 +27,7 @@ namespace JS {
 /**
  *  Class definition
  */
-class ToPhp
+class PhpVariable
 {
 private:
     /**
@@ -42,12 +42,12 @@ public:
      *  @param  isolate
      *  @param  value
      */
-    ToPhp(v8::Isolate *isolate, const v8::Handle<v8::Value> &value);
+    PhpVariable(v8::Isolate *isolate, const v8::Handle<v8::Value> &value);
     
     /**
      *  Destructor
      */
-    virtual ~ToPhp() = default;
+    virtual ~PhpVariable() = default;
     
     /**
      *  Cast to the underlying PHP value

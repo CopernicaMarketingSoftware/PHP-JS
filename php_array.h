@@ -16,7 +16,7 @@
  *  Dependencies
  */
 #include "core.h"
-#include "tophp.h"
+#include "php_variable.h"
 
 /**
  *  Begin of namespace
@@ -51,7 +51,7 @@ public:
             if (element->IsUndefined()) continue;
             
             // set this in the output array
-            set(i, ToPhp(isolate, element));
+            set(i, PhpVariable(isolate, element));
         }
     }
     
