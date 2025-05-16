@@ -16,6 +16,7 @@
 #include "core.h"
 #include "linker.h"
 #include "phparray.h"
+#include "names.h"
 
 
 #include <iostream>
@@ -121,7 +122,7 @@ ToPhp::ToPhp(v8::Isolate *isolate, const v8::Local<v8::Value> &input)
         if (linker.valid()) _value = linker.value();
 
         // otherwise we associate the object now
-        else _value = linker.attach(Php::Object("JS\\Object", new JSObject(isolate, object)));
+        else _value = linker.attach(Php::Object(Names::Object, new JSObject(isolate, object)));
     }
 
 

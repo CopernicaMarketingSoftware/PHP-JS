@@ -15,6 +15,7 @@
 #include "tophp.h"
 #include "scope.h"
 #include "jsobject.h"
+#include "names.h"
 
 
 #include <iostream>
@@ -74,7 +75,7 @@ v8::Local<v8::Value> Core::wrap(const Php::Value &object)
 {
     // if the object is already known to be a JS\Object
     // @todo also check if it comes from the same core
-    if (object.instanceOf("JS\\Object")) return JSObject::unwrap(object);
+    if (object.instanceOf(Names::Object)) return JSObject::unwrap(object);
     
     // check the prototypes that we have
     for (auto &prototype : _templates)

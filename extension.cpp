@@ -13,6 +13,7 @@
 #include "jscontext.h"
 #include "jsobject.h"
 #include "platform.h"
+#include "names.h"
 
 /**
  *  The VERSION macro is going to be used as string with surrounded quotes
@@ -40,13 +41,14 @@ extern "C" {
         static Php::Extension extension("PHP-JS2", THE_VERSION);
 
         // declare the accessor attributes
-        extension.add(Php::Constant("JS\\None",         v8::None));
-        extension.add(Php::Constant("JS\\ReadOnly",     v8::ReadOnly));
-        extension.add(Php::Constant("JS\\DontDelete",   v8::DontDelete));
-        extension.add(Php::Constant("JS\\DontEnumerate",v8::DontEnum));
+        // @todo use constants
+        extension.add(Php::Constant(JS::Names::None,          v8::None));
+        extension.add(Php::Constant(JS::Names::ReadOnly,      v8::ReadOnly));
+        extension.add(Php::Constant(JS::Names::DontDelete,    v8::DontDelete));
+        extension.add(Php::Constant(JS::Names::DontEnumerate, v8::DontEnum));
 
         // create our context class
-        Php::Class<JS::JSContext> context("JS\\Context");
+        Php::Class<JS::JSContext> context(JS::Names::Context);
 
         // properties can be assigned
         context.method<&JS::JSContext::assign>("assign", {
@@ -62,7 +64,7 @@ extern "C" {
         });
 
         // an empty class for exporting object from ecmascript
-        Php::Class<JS::JSObject> object("JS\\Object");
+        Php::Class<JS::JSObject> object(JS::Names::Object);
 
         // add the classes to the extension
         extension.add(std::move(context));
