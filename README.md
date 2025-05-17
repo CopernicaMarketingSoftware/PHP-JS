@@ -48,7 +48,7 @@ catch (Exception $exception)
 ```
 
 PHP-JS can map PHP variables to JS variables and vica versa. Scalars, arrays, objects,
-and traversable structures (like iterators) are converted between both environment. Note,
+and traversable structures (like iterators) are converted between both environments. Note,
 however, that due to fundamental differences between Javascript and PHP, not all
 constructs can be 1-to-1 mapped. It is recommended to stick to straightforward
 data types and structures.
