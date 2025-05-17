@@ -15,6 +15,7 @@
 #include "fromphp.h"
 #include "php_variable.h"
 #include "php_iterator.h"
+#include "names.h"
 
 /**
  *  Start namespace
@@ -41,18 +42,30 @@ PhpObject::~PhpObject()
 
 /**
  *  Helper method to unwrap an object
+ *  @param  core
  *  @param  value
- *  @return v8::Local<v8::Object>
+ *  @return Php::Object
  */
-v8::Local<v8::Object> PhpObject::unwrap(const Php::Value &value)
+PhpObject *PhpObject::unwrap(const Core *core, const Php::Value &value)
 {
+    // must be the right class
+    if (!value.instanceOf(Names::Object)) return nullptr;
+
     // get self-pointe
     PhpObject *self = (PhpObject *)value.implementation();
     
-    // @todo check if the object comes from the same core!
-    
+    // check if the object comes from the same core!
+    return self->_core.get() == core ? self : nullptr;
+}
+
+/**
+ *  Get the v8 handle
+ *  @return v8::Local<v8::Object>
+ */
+v8::Local<v8::Object> PhpObject::handle()
+{
     // get the local handle back
-    return self->_object.Get(self->_core->isolate());
+    return _object.Get(_core->isolate());
 }
 
 /**
@@ -171,7 +184,7 @@ Php::Value PhpObject::__call(const char *name, Php::Parameters &params)
     
     
     
-//    
+//  
 //    // create a handle scope, so variables "fall out of scope", "enter" the context and retrieve the value
 //    v8::HandleScope                     scope(Isolate::get());
 //    v8::Context::Scope                  context(_object->CreationContext());

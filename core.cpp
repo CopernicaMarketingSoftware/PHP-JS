@@ -15,10 +15,7 @@
 #include "php_variable.h"
 #include "scope.h"
 #include "php_object.h"
-#include "names.h"
-
-
-#include <iostream>
+#include "timeout.h"
 
 /**
  *  Begin of namespace
@@ -74,8 +71,10 @@ void Core::release()
 v8::Local<v8::Value> Core::wrap(const Php::Value &object)
 {
     // if the object is already known to be a JS\Object
-    // @todo also check if it comes from the same core
-    if (object.instanceOf(Names::Object)) return PhpObject::unwrap(object);
+    auto *instance = PhpObject::unwrap(this, object);
+    
+    // was this possible? then we reuse the original handle
+    if (instance != nullptr) return instance->handle();
     
     // check the prototypes that we have
     for (auto &prototype : _templates)
@@ -165,8 +164,7 @@ Php::Value Core::evaluate(const Php::Value &script, const Php::Value &timeout)
     v8::Context::Scope cscope(context);
 
     // catch any errors that occur while either compiling or running the script
-    // @todo do we need something with this?
-    //v8::TryCatch catcher;
+    v8::TryCatch catcher(_isolate);
     
     // @todo force script to be a string?
     
@@ -178,109 +176,29 @@ Php::Value Core::evaluate(const Php::Value &script, const Php::Value &timeout)
     // @todo should we be checking for errors?
     v8::Local<v8::Script> compiled = v8::Script::Compile(context, source).ToLocalChecked();
 
+    // install a timeout
+    Timeout timer(_isolate, timeout);
+
     // Run the script to get the result.
     v8::MaybeLocal<v8::Value> result = compiled->Run(context);
 
-    // check for result
-    // @todo maybe better error-report?
-    if (result.IsEmpty()) return nullptr;
-    
-    // @todo run event loop
-    
-    
-    
-    
-    // expose result to php
-    return PhpVariable(_isolate, result.ToLocalChecked());
+    // if no exception occured we're done
+    if (!catcher.HasCaught()) return result.IsEmpty() ? Php::Value(nullptr) : PhpVariable(_isolate, result.ToLocalChecked());
 
-    /*
+    // if we have terminated we just throw a fixed error message as the catcher.Message()
+    // method won't return anything useful (in fact it'll return nothing meaning we just segfault)
+    if (catcher.HasTerminated()) throw Php::Exception("Execution timed out");
 
+    // retrieve the message describing the problem
+    v8::Local<v8::Message>  message(catcher.Message());
+    v8::Local<v8::String>   description(message->Get());
 
-    // we create a mutex and a condition_variable so we can use wait_until on
-    // another thread which we can stop from our main thread. We use this to maybe abort
-    // execution of javascript after a certain amount of time.
-    bool busy = true;
-    std::mutex mutex;
-    std::condition_variable condition;
+    // convert the description to utf so we can dump it
+    v8::String::Utf8Value   string(_isolate, description);
 
-    // create a temporary thread which will mostly just sleep, but kill the script after a certain time period
-    std::thread aborter;
-
-    // only create this thread if our timeout is higher than 0
-    if (timeout > 0) aborter = std::move(std::thread([this, &busy, &mutex, &condition, timeout]() {
-
-        // time we want to terminate execution
-        auto end = std::chrono::system_clock::now() + std::chrono::seconds(timeout);
-
-        // has the execution timed out?
-        std::cv_status status = std::cv_status::no_timeout;
-
-        // obtain a lock around busy
-        std::unique_lock<std::mutex> lock(mutex);
-
-        // check to prevent a spurious wakeup from removing the timeout
-        // additionally, the main thread might have finished before we even start
-        while (busy && status != std::cv_status::timeout)
-        {
-            // we wait until some point in the future (this unlocks the lock until it returns)
-            status = condition.wait_until(lock, end);
-        }
-
-        // unlock the lock
-        lock.unlock();
-
-        // in case we timeout we must terminate execution
-        if (status != std::cv_status::timeout) return;
-
-        // create a handle for the local variable that is created by dereferencing _context
-        v8::HandleScope scope(Isolate::get());
-
-        // terminate execution
-        _context->GetIsolate()->TerminateExecution();
-    }));
-
-    // execute the script
-    v8::Local<v8::Value>    result(script->Run());
-
-    // obtain a lock around busy
-    std::unique_lock<std::mutex> lock(mutex);
-
-    // we are no longer busy
-    busy = false;
-
-    // unlock the lock
-    lock.unlock();
-
-    // notify the aborter thread
-    condition.notify_one();
-
-    // join our aborting thread
-    if (aborter.joinable()) aborter.join();
-
-    // did we catch an exception?
-    if (catcher.HasCaught())
-    {
-        // if we have terminated we just throw a fixed error message as the catcher.Message()
-        // method won't return anything useful (in fact it'll return nothing meaning we just segfault)
-        if (catcher.HasTerminated()) throw Php::Exception("Execution timed out");
-
-        // retrieve the message describing the problem
-        v8::Local<v8::Message>  message(catcher.Message());
-        v8::Local<v8::String>   description(message->Get());
-
-        // convert the description to utf so we can dump it
-        v8::String::Utf8Value   string(description);
-
-        // pass this exception on to PHP userspace
-        throw Php::Exception(std::string(*string, string.length()));
-    }
-
-    // return the result
-    return value(result);
-    */
+    // pass this exception on to PHP userspace
+    throw Php::Exception(std::string(*string, string.length()));
 }
-    
-    
     
 /**
  *  End of namespace

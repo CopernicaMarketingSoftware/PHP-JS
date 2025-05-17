@@ -14,13 +14,13 @@
 //i.next();
 
 
-hallo();
+//hallo();
 
 
-for (let v of y) 
-{
-
-}
+//for (let v of y) 
+//{
+//
+//}
 
 
 /**
@@ -36,5 +36,16 @@ for (let v of y)
 
 
 // @todo when there is a syntax error it sigsegv
-x.hello();
+//x.hello();
 
+const p = new Promise(function(resolve, reject) {
+
+    hallo();
+    resolve("yes!");
+});
+
+p.then(function() {
+   
+    hallo(); 
+    
+});

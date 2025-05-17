@@ -70,10 +70,17 @@ public:
     
     /**
      *  Helper method to unwrap an object
+     *  @param  core
      *  @param  value
+     *  @return Php::Object
+     */
+    static PhpObject *unwrap(const Core *core, const Php::Value &value);
+
+    /**
+     *  Get the v8 handle
      *  @return v8::Local<v8::Object>
      */
-    static v8::Local<v8::Object> unwrap(const Php::Value &value);
+    v8::Local<v8::Object> handle();
 
     /**
      *  Retrieve a property

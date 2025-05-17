@@ -62,18 +62,6 @@ private:
      */
     std::vector<std::unique_ptr<Template>> _templates;
 
-    /**
-     *  The context
-     *  @var    Stack<V8::Context>
-     */
-    //Stack<v8::Context> _context;
-
-    /**
-     *  List of external pointers to track
-     *  @var    std::set<External>
-     */
-    //std::set<External*> _externals;
-    
     
     /**
      *  Run the event loop for this isolate
@@ -141,27 +129,6 @@ public:
      *  @return v8::Local<v8::Context>
      */
     v8::Local<v8::Context> context(const v8::HandleScope &scope) { return _context.Get(_isolate); }
-
-    /**
-     *  Retrieve the currently active context
-     *
-     *  @return The current context, or a nullptr
-     */
-    //static Context *current();
-
-    /**
-     *  Track a new external object
-     *
-     *  @var    External*
-     */
-    //void track(External *external);
-
-    /**
-     *  Unregister an external object
-     *
-     *  @var    external    The external object we no longer to track
-     */
-    //void untrack(External *external);
 
     /**
      *  Assign a variable to the javascript context
