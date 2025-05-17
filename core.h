@@ -98,12 +98,6 @@ public:
     }
 
     /**
-     *  Release the object / it is no longer directly referenced from PHP space
-     *  Note that we may still have objects in PHP space that are indirectly referenced
-     */
-    void release();
-
-    /**
      *  The isolate of this context
      *  @return Isolate
      */

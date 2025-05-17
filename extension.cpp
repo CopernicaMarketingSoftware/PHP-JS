@@ -12,6 +12,7 @@
 #include <phpcpp.h>
 #include "php_context.h"
 #include "php_object.h"
+#include "php_function.h"
 #include "platform.h"
 #include "names.h"
 
@@ -63,12 +64,14 @@ extern "C" {
             Php::ByVal("timeout", Php::Type::Numeric, false)
         });
 
-        // an empty class for exporting object from ecmascript
+        // classes for exporting objects and functions from ecmascript
         Php::Class<JS::PhpObject> object(JS::Names::Object);
+        Php::Class<JS::PhpFunction> function(JS::Names::Function);
 
         // add the classes to the extension
         extension.add(std::move(context));
         extension.add(std::move(object));
+        extension.add(std::move(function));
 
         // the platform needs to be cleaned up on engine shutdown
         extension.onShutdown([]{

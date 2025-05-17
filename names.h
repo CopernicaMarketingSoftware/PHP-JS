@@ -24,6 +24,7 @@ struct Names {
     // class names
     inline static const char *Object = "JS\\Object";
     inline static const char *Context = "JS\\Context";
+    inline static const char *Function = "JS\\Function";
     
     // constants
     inline static const char *None = "JS\\None";

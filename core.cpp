@@ -15,7 +15,9 @@
 #include "php_variable.h"
 #include "scope.h"
 #include "php_object.h"
+#include "php_exception.h"
 #include "timeout.h"
+#include "names.h"
 
 /**
  *  Begin of namespace
@@ -54,16 +56,6 @@ Core::~Core()
 }
 
 /**
- *  Release the context after it is no longer in use by a Js\Context object
- */
-void Core::release()
-{
-    // @todo some initial cleanup?
-    
-    
-}
-
-/**
  *  Wrap a certain PHP object into a javascript object
  *  @param  object      MUST be an array or object!
  *  @return v8::Local<v8::Value>
@@ -71,7 +63,7 @@ void Core::release()
 v8::Local<v8::Value> Core::wrap(const Php::Value &object)
 {
     // if the object is already known to be a JS\Object
-    auto *instance = PhpObject::unwrap(this, object);
+    auto *instance = PhpBase::unwrap(this, object);
     
     // was this possible? then we reuse the original handle
     if (instance != nullptr) return instance->handle();
@@ -102,7 +94,8 @@ v8::Local<v8::Value> Core::wrap(const Php::Value &object)
  */
 Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const Php::Value &attributes)
 {
-    // @todo avoid that other contexts are assigned
+    // avoid that other contexts are assigned
+    if (value.instanceOf(Names::Context)) return false;
     
     // scope for the context
     Scope scope(shared_from_this());
@@ -127,12 +120,8 @@ Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const P
     //    }
     //}
 
-    // get the value
-    // @todo why this var?
-    FromPhp value2(_isolate, value);
-
-    // and store the value
-    v8::Maybe<bool> result = global->Set(scope, FromPhp(_isolate, name), value2); //FromPhp(shared_from_this(), value));
+    // store the value
+    v8::Maybe<bool> result = global->Set(scope, FromPhp(_isolate, name), FromPhp(_isolate, value));
     
     // check for success
     return result.IsJust() && result.FromJust();
@@ -147,10 +136,6 @@ Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const P
  */
 Php::Value Core::evaluate(const Php::Value &script, const Php::Value &timeout)
 {
-    // retrieve the optional timeout variable
-    // @todo optionally enable timeouts
-    //int timeout = (params.size() >= 2 ? params[1].numericValue() : 0);
-
     // scope for the isolate
     v8::Isolate::Scope iscope(_isolate);
 
@@ -189,15 +174,8 @@ Php::Value Core::evaluate(const Php::Value &script, const Php::Value &timeout)
     // method won't return anything useful (in fact it'll return nothing meaning we just segfault)
     if (catcher.HasTerminated()) throw Php::Exception("Execution timed out");
 
-    // retrieve the message describing the problem
-    v8::Local<v8::Message>  message(catcher.Message());
-    v8::Local<v8::String>   description(message->Get());
-
-    // convert the description to utf so we can dump it
-    v8::String::Utf8Value   string(_isolate, description);
-
     // pass this exception on to PHP userspace
-    throw Php::Exception(std::string(*string, string.length()));
+    throw PhpException(_isolate, catcher);
 }
     
 /**

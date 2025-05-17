@@ -57,7 +57,7 @@ Template::Template(v8::Isolate *isolate, const Php::Value &value) :
         &Template::setIndex,                                      // assign a property by index
         nullptr,                                                  // query to check which properties exist
         nullptr,                                                  // remove a property
-        _realarray ? nullptr : &Template::enumerateIndexes        // enumerate over an object based on the index  // @todo I wonder if this is correct! ArrayAccess does not necessarily imply indexed access
+        _realarray ? nullptr : &Template::enumerateIndexes        // enumerate over an object based on the index
     ));
 
     // when object is callable, we need to install a callback too

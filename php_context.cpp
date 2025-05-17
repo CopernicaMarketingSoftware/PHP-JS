@@ -23,17 +23,6 @@ namespace JS {
 PhpContext::PhpContext() : _core(std::make_shared<Core>()) {}
 
 /**
- *  Destructor
- */
-PhpContext::~PhpContext()
-{
-    // tell the underlying context that it is no longer used in PHP 
-    // space via a JS\Context instance (although it may still be referenced
-    // by object that have been returned to PHP space)
-    _core->release();
-}
-
-/**
  *  Assign a variable to the javascript context
  *  @param  params  array of parameters:
  *                  -   string  name of property to assign  required

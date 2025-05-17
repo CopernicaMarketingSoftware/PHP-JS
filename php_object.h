@@ -16,8 +16,7 @@
 /**
  *  Dependencies
  */
-#include <phpcpp.h>
-#include <v8.h>
+#include "php_base.h"
 
 /**
  *  Start namespace
@@ -25,37 +24,18 @@
 namespace JS {
 
 /**
- *  Forward declarations
- */
-class Core;
-
-/**
  *  Class definition
  */
-class PhpObject : public Php::Base, public Php::Traversable
+class PhpObject : public PhpBase, public Php::Traversable
 {
-private:
-    /**
-     *  The core in which we operate (this is a shared pointer because for as long as the
-     *  object lives in PHP space, we want to keep the core around (even when the PHP
-     *  space JS\Context already fell out of scope)
-     *  @var std::shared_ptr<Context>
-     */
-    std::shared_ptr<Core> _core;
-
-    /**
-     *  The underlying ecmascript object
-     *  @var    v8::Global<v8::Object>
-     */
-    v8::Global<v8::Object> _object;
-
 public:
     /**
      *  Constructor
      *  @param  isolate     The isolate
      *  @param  object      The ecmascript object
      */
-    PhpObject(v8::Isolate *isolate, const v8::Local<v8::Object> &object);
+    PhpObject(v8::Isolate *isolate, const v8::Local<v8::Object> &object) :
+        PhpBase(isolate, object) {}
 
     /**
      *  No copying
@@ -66,22 +46,8 @@ public:
     /**
      *  Destructor
      */
-    virtual ~PhpObject();
+    virtual ~PhpObject() = default;
     
-    /**
-     *  Helper method to unwrap an object
-     *  @param  core
-     *  @param  value
-     *  @return Php::Object
-     */
-    static PhpObject *unwrap(const Core *core, const Php::Value &value);
-
-    /**
-     *  Get the v8 handle
-     *  @return v8::Local<v8::Object>
-     */
-    v8::Local<v8::Object> handle();
-
     /**
      *  Retrieve a property
      *  @param  name    Name of the property

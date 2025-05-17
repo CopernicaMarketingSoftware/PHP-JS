@@ -52,3 +52,5 @@ $context->assign('hallo', function() {
 
 $result = $context->evaluate(file_get_contents(__DIR__.'/object.js'));
 var_dump($result);
+
+$result();

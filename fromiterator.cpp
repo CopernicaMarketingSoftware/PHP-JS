@@ -13,9 +13,6 @@
 #include "fromiterator.h"
 #include "scope.h"
 
-
-#include <iostream>
-
 /**
  *  Begin of namespace
  */
@@ -30,10 +27,6 @@ namespace JS {
 FromIterator::FromIterator(v8::Isolate *isolate, const Php::Value &value)
 {
     // @todo should we be calling rewind() right away?
-    
-    std::cout << "Iterator::Iterator" << std::endl;
-    
-    Php::call("var_dump", value);
     
     // we need a scope
     Scope scope(isolate);
@@ -117,8 +110,6 @@ void FromIterator::destruct(v8::Isolate *isolate, const v8::Local<v8::Object> &o
  */
 void FromIterator::nxtmethod(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
-    std::cout << "nxtmethod" << std::endl;
-    
     // the current isolate
     auto isolate = args.GetIsolate();
     
@@ -138,8 +129,6 @@ void FromIterator::nxtmethod(const v8::FunctionCallbackInfo<v8::Value> &args)
     // create a new return object
     auto result = v8::Object::New(isolate);
     
-    std::cout << "value = " << data->value() << std::endl;
-    
     // set the value
     result->Set(scope, v8::String::NewFromUtf8Literal(isolate, "value"), data->current()).Check();
     result->Set(scope, v8::String::NewFromUtf8Literal(isolate, "done"), v8::Boolean::New(isolate, !data->next())).Check();
@@ -157,8 +146,6 @@ void FromIterator::nxtmethod(const v8::FunctionCallbackInfo<v8::Value> &args)
  */
 void FromIterator::retmethod(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
-    std::cout << "retmethod" << std::endl;
-    
     // the current isolate
     auto isolate = args.GetIsolate();
 

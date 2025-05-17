@@ -15,58 +15,13 @@
 #include "fromphp.h"
 #include "php_variable.h"
 #include "php_iterator.h"
+#include "php_exception.h"
 #include "names.h"
 
 /**
  *  Start namespace
  */
 namespace JS {
-
-/**
- *  Constructor
- *  @param  isolate     The isolate
- *  @param  object      The ecmascript object
- */
-PhpObject::PhpObject(v8::Isolate *isolate, const v8::Local<v8::Object> &object) :
-    _core(Core::upgrade(isolate)),
-    _object(isolate, object) {}
-
-/**
- *  Destructor
- */
-PhpObject::~PhpObject()
-{
-    // forget the associated javascript object
-    _object.Reset();
-}
-
-/**
- *  Helper method to unwrap an object
- *  @param  core
- *  @param  value
- *  @return Php::Object
- */
-PhpObject *PhpObject::unwrap(const Core *core, const Php::Value &value)
-{
-    // must be the right class
-    if (!value.instanceOf(Names::Object)) return nullptr;
-
-    // get self-pointe
-    PhpObject *self = (PhpObject *)value.implementation();
-    
-    // check if the object comes from the same core!
-    return self->_core.get() == core ? self : nullptr;
-}
-
-/**
- *  Get the v8 handle
- *  @return v8::Local<v8::Object>
- */
-v8::Local<v8::Object> PhpObject::handle()
-{
-    // get the local handle back
-    return _object.Get(_core->isolate());
-}
 
 /**
  *  Retrieve a property
@@ -79,7 +34,7 @@ Php::Value PhpObject::__get(const Php::Value &name) const
     Scope scope(_core);
     
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()).As<v8::Object>());
     
     // get the property value
     auto property = object->Get(scope, FromPhp(_core->isolate(), name));
@@ -103,10 +58,10 @@ void PhpObject::__set(const Php::Value &name, const Php::Value &property)
     Scope scope(_core);
 
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()).As<v8::Object>());
     
     // convert the value to a ecmascript value and store it (we explicitly want to ignore the return-value)
-    __attribute__((unused)) auto result = object->Set(scope, FromPhp(_core->isolate(), name), FromPhp(_core->isolate(), property));
+    object->Set(scope, FromPhp(_core->isolate(), name), FromPhp(_core->isolate(), property)).Check();
 }
 
 /**
@@ -120,7 +75,7 @@ bool PhpObject::__isset(const Php::Value &name)
     Scope scope(_core);
 
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()).As<v8::Object>());
 
     // check if the object has the requested property
     auto result = object->Has(scope, FromPhp(_core->isolate(), name));
@@ -141,7 +96,7 @@ Php::Value PhpObject::__call(const char *name, Php::Parameters &params)
     Scope scope(_core);
 
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()).As<v8::Object>());
     
     // construct the method name
     auto methodname = v8::String::NewFromUtf8(_core->isolate(), name);
@@ -168,40 +123,18 @@ Php::Value PhpObject::__call(const char *name, Php::Parameters &params)
         // set a parameter
         args.push_back(FromPhp(_core->isolate(), params[i]));
     }
-        
+    
+    // catch any errors that occur while either compiling or running the script
+    v8::TryCatch catcher(_core->isolate());
+    
     // the result
     auto result = method->Call(scope, object, args.size(), args.data());
     
-    // on success
-    if (!result.IsEmpty()) return PhpVariable(_core->isolate(), result.ToLocalChecked());
-    
-    // a failure took place
-    // @todo should we be capturing exceptions?
-    // @todo possibly report this
-    
-    // done
-    return nullptr;
-    
-    
-    
-//  
-//    // create a handle scope, so variables "fall out of scope", "enter" the context and retrieve the value
-//    v8::HandleScope                     scope(Isolate::get());
-//    v8::Context::Scope                  context(_object->CreationContext());
-//    v8::Local<v8::Function>             function(_object->Get(value(Php::Value(name))).As<v8::Function>());
-//    std::vector<v8::Local<v8::Value>>   input;
-//
-//    // check whether the value actually exists
-//    if (function.IsEmpty())             throw Php::Exception(std::string{ "No such method: " } + name);
-//
-//    // reserve space for the input values
-//    input.reserve(params.size());
-//
-//    // fill all the elements
-//    for (auto &param : params) input.push_back(value(param));
-//
-//    // execute the function and return the result
-//    return value(function->Call(static_cast<v8::Local<v8::Object>>(_object), input.size(), input.data()));
+    // no exception
+    if (!catcher.HasCaught()) return result.IsEmpty() ? Php::Value(nullptr) : PhpVariable(_core->isolate(), result.ToLocalChecked());
+
+    // pass this exception on to PHP userspace
+    throw PhpException(_core->isolate(), catcher);
 }
 
 /**
@@ -214,7 +147,7 @@ Php::Value PhpObject::__toString()
     Scope scope(_core);
 
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()).As<v8::Object>());
 
     // convert to string and then to php
     auto result = object->ToString(scope);
@@ -236,7 +169,7 @@ Php::Iterator *PhpObject::getIterator()
     Scope scope(_core);
 
     // get the object in a local variable
-    v8::Local<v8::Object> object(_object.Get(_core->isolate()));
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()).As<v8::Object>());
 
     // create a new iterator instance, cleaned up by PHP-CPP
     return new PhpIterator(this, _core, object);

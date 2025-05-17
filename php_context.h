@@ -54,7 +54,7 @@ public:
     /**
      *  Destructor
      */
-    virtual ~PhpContext();
+    virtual ~PhpContext() = default;
 
     /**
      *  Assign a variable to the javascript context

@@ -8,6 +8,10 @@
  *  @copyright 2025 Copernica BV
  */
 
+function x() { hallo(); hallo(); }
+
+x;
+
 // @todo this was causing a crash
 //const i = y[Symbol.iterator];
 //
@@ -38,6 +42,8 @@
 // @todo when there is a syntax error it sigsegv
 //x.hello();
 
+/*
+
 const p = new Promise(function(resolve, reject) {
 
     hallo();
@@ -49,3 +55,13 @@ p.then(function() {
     hallo(); 
     
 });
+*/
+
+/*
+const f = function() {
+    hallo();
+    hallo();
+}
+
+
+*/
