@@ -57,9 +57,9 @@ data types and structures.
 ## DEPENDENCIES
 
 PHP-JS relies on [PHP-CPP](http://www.php-cpp.com) and the [Google V8 engine](https://v8.dev/).
-It is to work with V8 version 13.6. We recommend compiling V8 using your system libraries,
-rather than the ones bundled with V8. This avoids conflicts whtn installing PHP-JS as a PHP
-extension, as PHP itself also uses system libraries.
+It is known to work with V8 version 13.6. We recommend compiling V8 using GCC and your system
+libraries, rather than the ones bundled with V8. This avoids conflicts whtn installing PHP-JS
+as a PHP extension, as PHP itself also uses system libraries.
 
 Use the following flags when building V8:
 
@@ -72,7 +72,13 @@ use_sysroot=false
 use_custom_libcxx=false
 ```
 
-See the [official V8 build instructions](https://v8.dev/docs/build-gn) for details.
+These flags ensure:
+
+- GCC is used instead of Clang (`is_clang=false`)
+- System libraries are used instead of bundled versions (`use_custom_libcxx=false`)
+- Unnecessary features like ICU (internationalization) are disabled for a leaner build
+
+For more details on building V8, visit [https://v8.dev/docs/build-gn](https://v8.dev/docs/build-gn).
 
 
 ## EXTRA INFO
