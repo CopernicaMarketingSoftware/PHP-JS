@@ -18,6 +18,7 @@
 #include "php_variable.h"
 #include "fromiterator.h"
 #include "php_array.h"
+#include "exception.h"
 
 /**
  *  Begin of namespace
@@ -139,6 +140,9 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
     // we need the isolate a couple of times
     auto *isolate = info.GetIsolate();
     
+    // handle-scope
+    Scope scope(isolate);
+    
     // the object that is being accessed
     Php::Value object = Linker(isolate, info.This()).value();
     
@@ -173,74 +177,83 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
      *  retrieved with __get). If that fails, we try again if it is
      *  callable (then it will be a __call for sure!)
      */
-
-    // does the method exist, is it callable or is it a property
-    bool method_exists  = object.isObject() && Php::call("method_exists", object, *name);
-    bool is_callable    = object.isCallable(*name);
-    bool contains       = object.contains(*name, name.length());
-    
-    // does a property exist by the given name and is it not defined as a method?
-    if (contains && !method_exists)
+     
+    // avoid exceptions
+    try
     {
-        // get the object property value
-        FromPhp value(isolate, object.get(*name, name.length()));
+        // does the method exist, is it callable or is it a property
+        bool method_exists  = object.isObject() && Php::call("method_exists", object, *name);
+        bool is_callable    = object.isCallable(*name);
+        bool contains       = object.contains(*name, name.length());
         
-        // convert it to a javascript handle and return it
-        info.GetReturnValue().Set(value);
+        // does a property exist by the given name and is it not defined as a method?
+        if (contains && !method_exists)
+        {
+            // get the object property value
+            FromPhp value(isolate, object.get(*name, name.length()));
+            
+            // convert it to a javascript handle and return it
+            info.GetReturnValue().Set(value);
+
+            // handled
+            return v8::Intercepted::kYes;
+        }
+        // is it a countable object we want the length off?
+        else if (std::strcmp(*name, "length") == 0 && (object.instanceOf("Countable") || object.isArray()))
+        {
+            // return the count from this object
+            info.GetReturnValue().Set(FromPhp(isolate, Php::call("count", object)));
+
+            // handled
+            return v8::Intercepted::kYes;
+        }
+        else if (object.instanceOf("ArrayAccess") && object.call("offsetExists", *name))
+        {
+            // get the object property value
+            FromPhp value(isolate, object.call("offsetGet", *name));
+
+            // use the array access to retrieve the property
+            info.GetReturnValue().Set(value);
+
+            // handled
+            return v8::Intercepted::kYes;
+        }
+        else if (object.isCallable("__toString") && (std::strcmp(*name, "valueOf") == 0 || std::strcmp(*name, "toString") == 0))
+        {
+            // handle the to-string conversion
+            return getString(info);
+        }
+        else if (is_callable)
+        {
+            // we goong to pass the "this" and method name via data
+            v8::Local<v8::Array> data = v8::Array::New(isolate, 2);
+            
+            // store the method name and this-pointer in the data
+            data->Set(scope, 0, info.This()).Check();
+            data->Set(scope, 1, prop).Check();
+            
+            // create a new function object (with the data holding "this" and the name)
+            auto func = v8::Function::New(scope, &Template::method, data).ToLocalChecked();
+            
+            // create the function to be called
+            info.GetReturnValue().Set(func);
+
+            // handled
+            return v8::Intercepted::kYes;
+        }
+        else
+        {
+            // not handled
+            return v8::Intercepted::kNo;
+        }
+    }
+    catch (const Php::Exception &exception)
+    {
+        // pass on
+        isolate->ThrowException(Exception(isolate, exception));
 
         // handled
         return v8::Intercepted::kYes;
-    }
-    // is it a countable object we want the length off?
-    else if (std::strcmp(*name, "length") == 0 && (object.instanceOf("Countable") || object.isArray()))
-    {
-        // return the count from this object
-        info.GetReturnValue().Set(FromPhp(isolate, Php::call("count", object)));
-
-        // handled
-        return v8::Intercepted::kYes;
-    }
-    else if (object.instanceOf("ArrayAccess") && object.call("offsetExists", *name))
-    {
-        // get the object property value
-        FromPhp value(isolate, object.call("offsetGet", *name));
-
-        // use the array access to retrieve the property
-        info.GetReturnValue().Set(value);
-
-        // handled
-        return v8::Intercepted::kYes;
-    }
-    else if (object.isCallable("__toString") && (std::strcmp(*name, "valueOf") == 0 || std::strcmp(*name, "toString") == 0))
-    {
-        // handle the to-string conversion
-        return getString(info);
-    }
-    else if (is_callable)
-    {
-        // we need a handle scope
-        Scope scope(isolate);
-        
-        // we goong to pass the "this" and method name via data
-        v8::Local<v8::Array> data = v8::Array::New(isolate, 2);
-        
-        // store the method name and this-pointer in the data
-        data->Set(scope, 0, info.This()).Check();
-        data->Set(scope, 1, prop).Check();
-        
-        // create a new function object (with the data holding "this" and the name)
-        auto func = v8::Function::New(scope, &Template::method, data).ToLocalChecked();
-        
-        // create the function to be called
-        info.GetReturnValue().Set(func);
-
-        // handled
-        return v8::Intercepted::kYes;
-    }
-    else
-    {
-        // not handled
-        return v8::Intercepted::kNo;
     }
 }
 
@@ -279,14 +292,23 @@ v8::Intercepted Template::getString(const v8::PropertyCallbackInfo<v8::Value> &i
     // we need the isolate
     auto *isolate = info.GetIsolate();
 
-    // the object that is being accessed
-    Php::Value object = Linker(isolate, info.This()).value();
-    
-    // only when underlying object can be converted to strings
-    if (!object.isObject() || !object.isCallable("__toString")) return v8::Intercepted::kNo;
-    
-    // set the return-value
-    info.GetReturnValue().Set(FromPhp(isolate, object.call("__toString")));
+    // catch exceptions
+    try
+    {
+        // the object that is being accessed
+        Php::Value object = Linker(isolate, info.This()).value();
+        
+        // only when underlying object can be converted to strings
+        if (!object.isObject() || !object.isCallable("__toString")) return v8::Intercepted::kNo;
+        
+        // set the return-value
+        info.GetReturnValue().Set(FromPhp(isolate, object.call("__toString")));
+    }
+    catch (const Php::Exception &exception)
+    {
+        // pass the exception on to javascript userspace
+        isolate->ThrowException(Exception(isolate, exception));
+    }
         
     // handled
     return v8::Intercepted::kYes;
@@ -318,24 +340,33 @@ v8::Intercepted Template::getIterator(const v8::PropertyCallbackInfo<v8::Value> 
         
         // create a handlescope
         Scope scope(isolate);
-
-        // get original php object
-        Php::Value object = Linker(isolate, info.This()).value();
         
-        // the retval that needs updating
-        auto retval = info.GetReturnValue();
-        
-        // if the object is already traversable
-        if (object.instanceOf("Iterator")) retval.Set(FromIterator(isolate, object).value());
-        
-        // of a can indirectly retrieve the iterator?
-        else if (object.instanceOf("IteratorAggregate")) retval.Set(FromIterator(isolate, object.call("getIterator")).value());
-        
-        // arrays themselves can be iterated
-        else if (object.isArray()) retval.Set(FromIterator(isolate, Php::Object("ArrayIterator", object)).value());
-        
-        // this should not happen
-        else retval.Set(FromIterator(isolate, Php::Object("EmptyIterator")).value());
+        // avoid exceptions
+        try
+        {
+            // get original php object
+            Php::Value object = Linker(isolate, info.This()).value();
+            
+            // the retval that needs updating
+            auto retval = info.GetReturnValue();
+            
+            // if the object is already traversable
+            if (object.instanceOf("Iterator")) retval.Set(FromIterator(isolate, object).value());
+            
+            // of a can indirectly retrieve the iterator?
+            else if (object.instanceOf("IteratorAggregate")) retval.Set(FromIterator(isolate, object.call("getIterator")).value());
+            
+            // arrays themselves can be iterated
+            else if (object.isArray()) retval.Set(FromIterator(isolate, Php::Object("ArrayIterator", object)).value());
+            
+            // this should not happen
+            else retval.Set(FromIterator(isolate, Php::Object("EmptyIterator")).value());
+        }
+        catch (const Php::Exception &exception)
+        {
+            // pass the exception on to javascript userspace
+            isolate->ThrowException(Exception(isolate, exception));
+        }
 
     }).ToLocalChecked();
 
@@ -357,37 +388,52 @@ v8::Intercepted Template::getIndex(unsigned index, const v8::PropertyCallbackInf
     // some variables
     auto *isolate = info.GetIsolate();
 
-    // the object that is being accessed
-    Php::Value object = Linker(isolate, info.This()).value();
+    // handle scope
+    Scope scope(isolate);
     
-    // is the underlying variable an array?
-    if (object.isArray() && object.contains(index))
+    // avoid exceptions
+    try
     {
-        // make the call
-        FromPhp value(isolate, object.get(static_cast<int64_t>(index)));
-
-        // set the result
-        info.GetReturnValue().Set(v8::Global<v8::Value>(isolate, value));
-
-        // call was handled
-        return v8::Intercepted::kYes;
-    }
-    
-    // is the underlying variable an ArrayAccess with this property?
-    if (object.isObject() && object.call("offsetExists", static_cast<int64_t>(index)))
-    {
-        // make the call
-        FromPhp value(isolate, object.call("offsetGet", static_cast<int64_t>(index)));
-
-        // set the result
-        info.GetReturnValue().Set(v8::Global<v8::Value>(isolate, value));
+        // the object that is being accessed
+        Php::Value object = Linker(isolate, info.This()).value();
         
+        // is the underlying variable an array?
+        if (object.isArray() && object.contains(index))
+        {
+            // make the call
+            FromPhp value(isolate, object.get(static_cast<int64_t>(index)));
+
+            // set the result
+            info.GetReturnValue().Set(v8::Global<v8::Value>(isolate, value));
+
+            // call was handled
+            return v8::Intercepted::kYes;
+        }
+        
+        // is the underlying variable an ArrayAccess with this property?
+        if (object.isObject() && object.call("offsetExists", static_cast<int64_t>(index)))
+        {
+            // make the call
+            FromPhp value(isolate, object.call("offsetGet", static_cast<int64_t>(index)));
+
+            // set the result
+            info.GetReturnValue().Set(v8::Global<v8::Value>(isolate, value));
+            
+            // call was handled
+            return v8::Intercepted::kYes;
+        }
+    
+        // call was not handled
+        return v8::Intercepted::kNo;
+    }
+    catch (const Php::Exception &exception)
+    {
+        // pass the exception on to javascript userspace
+        isolate->ThrowException(Exception(isolate, exception));
+    
         // call was handled
         return v8::Intercepted::kYes;
     }
-    
-    // call was not handled
-    return v8::Intercepted::kNo;
 }
 
 /**
@@ -398,29 +444,30 @@ v8::Intercepted Template::getIndex(unsigned index, const v8::PropertyCallbackInf
  */
 v8::Intercepted Template::setProperty(v8::Local<v8::Name> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info)
 {
-    // @todo check implementation for arrays
+    // some variables we need a couple of times
+    auto isolate = info.GetIsolate();
     
-    // the object that is being accessed
-    Php::Value object = Linker(info.GetIsolate(), info.This()).value();
-
+    // handle scope
+    Scope scope(isolate);
+    
     // We are calling into PHP space so we need to catch all exceptions
-    // @todo why do we not have such try/catch blocks in other calls?
     try
     {
+        // the object that is being accessed
+        Php::Value object = Linker(isolate, info.This()).value();
+
+        // if the underlying variable is an array
+        if (object.isArray()) object.set(PhpVariable(isolate, input), PhpVariable(isolate, input));
+
         // make the call
-        object.call("offsetSet", PhpVariable(info.GetIsolate(), property), PhpVariable(info.GetIsolate(), input));
+        else object.call("offsetSet", PhpVariable(isolate, property), PhpVariable(isolate, input));
     }
-    catch (const Php::Exception& exception)
+    catch (const Php::Exception &exception)
     {
-        // construct the error message
-        auto message = v8::String::NewFromUtf8(info.GetIsolate(), exception.what());
-        
-        // @todo check if error message is valid
-        
         // pass the exception on to javascript userspace
-        info.GetIsolate()->ThrowException(v8::Exception::Error(message.ToLocalChecked()));
+        isolate->ThrowException(Exception(isolate, exception));
     }
-    
+
     // call was handled
     return v8::Intercepted::kYes;
 }
@@ -433,15 +480,20 @@ v8::Intercepted Template::setProperty(v8::Local<v8::Name> property, v8::Local<v8
  */
 v8::Intercepted Template::setIndex(unsigned index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info)
 {
-    // the object that is being accessed
-    Php::Value object = Linker(info.GetIsolate(), info.This()).value();
+    // some variables we need a couple of times
+    auto isolate = info.GetIsolate();
+    
+    // handle scope
+    Scope scope(isolate);
 
     // We are calling into PHP space so we need to catch all exceptions
-    // @todo why do we not have such try/catch blocks in other calls?
     try
     {
+        // the object that is being accessed
+        Php::Value object = Linker(info.GetIsolate(), info.This()).value();
+
         // the variable to set
-        PhpVariable value(info.GetIsolate(), input);
+        PhpVariable value(isolate, input);
         
         // if the underlying variable is an array
         if (object.isArray()) object.set(static_cast<int64_t>(index), value);
@@ -449,15 +501,10 @@ v8::Intercepted Template::setIndex(unsigned index, v8::Local<v8::Value> input, c
         // make the call
         else object.call("offsetSet", static_cast<int64_t>(index), value);
     }
-    catch (const Php::Exception& exception)
+    catch (const Php::Exception &exception)
     {
-        // construct the error message
-        auto message = v8::String::NewFromUtf8(info.GetIsolate(), exception.what());
-        
-        // @todo check if error message is valid
-        
         // pass the exception on to javascript userspace
-        info.GetIsolate()->ThrowException(v8::Exception::Error(message.ToLocalChecked()));
+        isolate->ThrowException(Exception(isolate, exception));
     }
     
     // call was handled
@@ -554,25 +601,33 @@ void Template::method(const v8::FunctionCallbackInfo<v8::Value>& info)
     // we might need a scope
     Scope scope(isolate);
     
-    // the data is an array
-    v8::Local<v8::Array> data(info.Data().As<v8::Array>());
-    
-    // the "this" object is stored in the data
-    auto self = data->Get(scope, 0).As<v8::Object>().ToLocalChecked();
-    auto prop = data->Get(scope, 1).As<v8::String>().ToLocalChecked();
-    
-    // the object that is being accessed
-    Php::Value object = Linker(isolate, self).value();
+    // avoid exceptions
+    try
+    {
+        // the data is an array
+        v8::Local<v8::Array> data(info.Data().As<v8::Array>());
+        
+        // the "this" object is stored in the data
+        auto self = data->Get(scope, 0).As<v8::Object>().ToLocalChecked();
+        auto prop = data->Get(scope, 1).As<v8::String>().ToLocalChecked();
+        
+        // the object that is being accessed
+        Php::Value object = Linker(isolate, self).value();
 
-    // the callable
-    Php::Array callable({object, PhpVariable(isolate, prop)});
+        // the callable
+        Php::Array callable({object, PhpVariable(isolate, prop)});
 
-    // call the function
-    // @todo catch exceptions
-    auto result = Php::call("call_user_func_array", callable, PhpArray(info));
+        // call the function
+        auto result = Php::call("call_user_func_array", callable, PhpArray(info));
 
-    // store return value
-    info.GetReturnValue().Set(FromPhp(isolate, result));
+        // store return value
+        info.GetReturnValue().Set(FromPhp(isolate, result));
+    }
+    catch (const Php::Exception &exception)
+    {
+        // pass the exception on to javascript userspace
+        isolate->ThrowException(Exception(isolate, exception));
+    }
 }
 
 /**
@@ -581,15 +636,29 @@ void Template::method(const v8::FunctionCallbackInfo<v8::Value>& info)
  */
 void Template::call(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-    // the object that is being accessed
-    Php::Value object = Linker(info.GetIsolate(), info.This()).value();
+    // we need the isolate
+    auto *isolate = info.GetIsolate();
+    
+    // create handle-scope
+    Scope scope(isolate);
+    
+    // avoid exceptions
+    try
+    {
+        // the object that is being accessed
+        Php::Value object = Linker(isolate, info.This()).value();
 
-    // call the function
-    // @todo catch exceptions
-    auto result = Php::call("call_user_func_array", object, PhpArray(info));
+        // call the function
+        auto result = Php::call("call_user_func_array", object, PhpArray(info));
 
-    // store return value
-    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), result));
+        // store return value
+        info.GetReturnValue().Set(FromPhp(isolate, result));
+    }
+    catch (const Php::Exception &exception)
+    {
+        // pass the exception on to javascript userspace
+        isolate->ThrowException(Exception(isolate, exception));
+    }
 }
 
 /**
