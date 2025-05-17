@@ -71,15 +71,16 @@ bool Linker::valid() const
 /**
  *  Associate the object with a PHP variable
  *  @param  value
+ *  @param  weak
  *  @return Php::Value
  */
-const Php::Value &Linker::attach(const Php::Value &value)
+const Php::Value &Linker::attach(const Php::Value &value, bool weak)
 {
     // remove the old pointer
     detach();
     
     // make a brand new link
-    auto *link = new Link(_isolate, _object, value);
+    auto *link = new Link(_isolate, _object, value, weak);
     
     // associate property
     _object->SetPrivate(_isolate->GetCurrentContext(), _key, v8::External::New(_isolate, link));

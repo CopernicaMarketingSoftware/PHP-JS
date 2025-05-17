@@ -17,9 +17,7 @@
 #include "fromphp.h"
 #include "php_variable.h"
 #include "fromiterator.h"
-
-
-#include <iostream>
+#include "php_array.h"
 
 /**
  *  Begin of namespace
@@ -28,6 +26,9 @@ namespace JS {
 
 /**
  *  Constructor
+ *  Watched out: the passed in PHP-value is only used to decide which handlers to install,
+ *  but the template can after that be used for multiple PHP variables with a similar
+ *  signature (see also Template::apply())
  *  @param  isolate
  *  @param  object
  */
@@ -37,15 +38,8 @@ Template::Template(v8::Isolate *isolate, const Php::Value &value) :
     _arrayaccess(value.instanceOf("ArrayAccess")),
     _callable(value.isObject() && Php::call("method_exists", value, "__invoke"))
 {
-    // @todo do we need a scope here?
-    
     // get the template as local object
     v8::Local<v8::ObjectTemplate> tpl(v8::ObjectTemplate::New(isolate));
-    
-    // pointer to ourselves
-    auto self = v8::External::New(isolate, this);
-    
-    std::cout << "set-named-prooerty-handles" << std::endl;
     
     // register the property handlers for objects and arrays
     tpl->SetHandler(v8::NamedPropertyHandlerConfiguration(
@@ -53,26 +47,20 @@ Template::Template(v8::Isolate *isolate, const Php::Value &value) :
         &Template::setProperty,                                   // assign a property
         nullptr,                                                  // query to check which properties exist
         nullptr,                                                  // remove a property
-        &Template::enumerateProperties,                           // enumerate over an object
-        self                                                      // self-reference
+        &Template::enumerateProperties                            // enumerate over an object
     ));
 
-    if (_arrayaccess || _realarray) std::cout << "set-index-prooerty-handles" << std::endl;
-    
     // for ArrayAccess objects we also configure callbacks to get access to properties by their ID
     if (_arrayaccess || _realarray) tpl->SetHandler(v8::IndexedPropertyHandlerConfiguration(
         &Template::getIndex,                                      // get access to an index
         &Template::setIndex,                                      // assign a property by index
         nullptr,                                                  // query to check which properties exist
         nullptr,                                                  // remove a property
-        _realarray ? nullptr : &Template::enumerateIndexes,       // enumerate over an object based on the index  // @todo I wonder if this is correct! ArrayAccess does not necessarily imply indexed access
-        self                                                      // self-reference
+        _realarray ? nullptr : &Template::enumerateIndexes        // enumerate over an object based on the index  // @todo I wonder if this is correct! ArrayAccess does not necessarily imply indexed access
     ));
 
-    if (_callable) std::cout << "set call-as-function" << std::endl;
-    
     // when object is callable, we need to install a callback too
-    if (_callable) tpl->SetCallAsFunctionHandler(&Template::call, self);
+    if (_callable) tpl->SetCallAsFunctionHandler(&Template::call);
     
     // make sure handler is preserved
     _template.Reset(isolate, tpl);
@@ -88,7 +76,7 @@ Template::~Template()
 }
 
 /**
- *  Is this template useful for a certain object
+ *  Is this template useful for a certain object? Does it have the features that are expected?
  *  @param  value
  *  @return bool
  */
@@ -123,7 +111,6 @@ v8::Local<v8::Value> Template::apply(const Php::Value &value) const
     auto object = result.ToLocalChecked();
     
     // arrays cannot be weak-referenced, so we won't link them
-    // @todo or would it be more effective to wrap in an ArrayObject?
     if (!value.isObject()) return object;
 
     // object to link the two objects together
@@ -149,17 +136,20 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
     // symbol-objects are a specific case that we do not expect to ever see in real life, but we can handle it as symbol like this
     if (property->IsSymbolObject()) return getSymbol(v8::Local<v8::Symbol>::Cast(property.As<v8::SymbolObject>()->ValueOf()), info);
     
-    // the object that is being accessed
-    Php::Value object = Linker(info.GetIsolate(), info.This()).value();
+    // we need the isolate a couple of times
+    auto *isolate = info.GetIsolate();
     
-    // we expect an object now
-    if (!object.isObject()) return v8::Intercepted::kNo;
+    // the object that is being accessed
+    Php::Value object = Linker(isolate, info.This()).value();
+    
+    // we expect an object or array now
+    if (!object.isObject() && !object.isArray()) return v8::Intercepted::kNo;
     
     // convert to a utf8value to get the actual c-string
     v8::Local<v8::String> prop = property.As<v8::String>();
 
     // for use as c_str    
-    v8::String::Utf8Value name(info.GetIsolate(), prop);
+    v8::String::Utf8Value name(isolate, prop);
     
     /**
      *  This is where it gets a little weird.
@@ -193,7 +183,7 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
     if (contains && !method_exists)
     {
         // get the object property value
-        FromPhp value(info.GetIsolate(), object.get(*name, name.length()));
+        FromPhp value(isolate, object.get(*name, name.length()));
         
         // convert it to a javascript handle and return it
         info.GetReturnValue().Set(value);
@@ -205,7 +195,7 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
     else if (std::strcmp(*name, "length") == 0 && (object.instanceOf("Countable") || object.isArray()))
     {
         // return the count from this object
-        info.GetReturnValue().Set(FromPhp(info.GetIsolate(), Php::call("count", object)));
+        info.GetReturnValue().Set(FromPhp(isolate, Php::call("count", object)));
 
         // handled
         return v8::Intercepted::kYes;
@@ -213,7 +203,7 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
     else if (object.instanceOf("ArrayAccess") && object.call("offsetExists", *name))
     {
         // get the object property value
-        FromPhp value(info.GetIsolate(), object.call("offsetGet", *name));
+        FromPhp value(isolate, object.call("offsetGet", *name));
 
         // use the array access to retrieve the property
         info.GetReturnValue().Set(value);
@@ -229,10 +219,10 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
     else if (is_callable)
     {
         // we need a handle scope
-        Scope scope(info.GetIsolate());
+        Scope scope(isolate);
         
         // we goong to pass the "this" and method name via data
-        v8::Local<v8::Array> data = v8::Array::New(info.GetIsolate(), 2);
+        v8::Local<v8::Array> data = v8::Array::New(isolate, 2);
         
         // store the method name and this-pointer in the data
         data->Set(scope, 0, info.This()).Check();
@@ -261,17 +251,20 @@ v8::Intercepted Template::getProperty(v8::Local<v8::Name> property, const v8::Pr
  */
 v8::Intercepted Template::getSymbol(v8::Local<v8::Symbol> symbol, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
+    // we need the isolate
+    auto *isolate = info.GetIsolate();
+    
     // create a handlescope
-    Scope scope(info.GetIsolate());
+    Scope scope(isolate);
 
     // to-string conversions
-    if (symbol->Equals(scope, v8::Symbol::GetToStringTag(info.GetIsolate())).FromMaybe(false)) return getString(info);
+    if (symbol->Equals(scope, v8::Symbol::GetToStringTag(isolate)).FromMaybe(false)) return getString(info);
 
     // to-primitive conversions are also treated as to-strings
-    if (symbol->Equals(scope, v8::Symbol::GetToPrimitive(info.GetIsolate())).FromMaybe(false)) return getString(info);
+    if (symbol->Equals(scope, v8::Symbol::GetToPrimitive(isolate)).FromMaybe(false)) return getString(info);
     
     // to-iterator conversions
-    if (symbol->Equals(scope, v8::Symbol::GetIterator(info.GetIsolate())).FromMaybe(false)) return getIterator(info);
+    if (symbol->Equals(scope, v8::Symbol::GetIterator(isolate)).FromMaybe(false)) return getIterator(info);
     
     // not handled
     return v8::Intercepted::kNo;
@@ -283,14 +276,17 @@ v8::Intercepted Template::getSymbol(v8::Local<v8::Symbol> symbol, const v8::Prop
  */
 v8::Intercepted Template::getString(const v8::PropertyCallbackInfo<v8::Value> &info)
 {
+    // we need the isolate
+    auto *isolate = info.GetIsolate();
+
     // the object that is being accessed
-    Php::Value object = Linker(info.GetIsolate(), info.This()).value();
+    Php::Value object = Linker(isolate, info.This()).value();
     
     // only when underlying object can be converted to strings
     if (!object.isObject() || !object.isCallable("__toString")) return v8::Intercepted::kNo;
     
     // set the return-value
-    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), object.call("__toString")));
+    info.GetReturnValue().Set(FromPhp(isolate, object.call("__toString")));
         
     // handled
     return v8::Intercepted::kYes;
@@ -302,35 +298,44 @@ v8::Intercepted Template::getString(const v8::PropertyCallbackInfo<v8::Value> &i
  */
 v8::Intercepted Template::getIterator(const v8::PropertyCallbackInfo<v8::Value> &info)
 {
+    // we need the isolate
+    auto *isolate = info.GetIsolate();
+    
     // create a handlescope
-    Scope scope(info.GetIsolate());
+    Scope scope(isolate);
 
     // the object that is being accessed
-    Php::Value object = Linker(info.GetIsolate(), info.This()).value();
+    Php::Value object = Linker(isolate, info.This()).value();
     
     // if it is not iterable
     if (!object.instanceOf("Traversable") && !object.isArray()) return v8::Intercepted::kNo;
             
     // an iterator should be a function
     auto func = v8::Function::New(scope, [](const v8::FunctionCallbackInfo<v8::Value>& info) {
-            
+
+        // we need the isolate
+        auto *isolate = info.GetIsolate();
+        
+        // create a handlescope
+        Scope scope(isolate);
+
         // get original php object
-        Php::Value object = Linker(info.GetIsolate(), info.This()).value();
+        Php::Value object = Linker(isolate, info.This()).value();
         
         // the retval that needs updating
         auto retval = info.GetReturnValue();
         
         // if the object is already traversable
-        if (object.instanceOf("Iterator")) retval.Set(FromIterator(info.GetIsolate(), object).value());
+        if (object.instanceOf("Iterator")) retval.Set(FromIterator(isolate, object).value());
         
         // of a can indirectly retrieve the iterator?
-        else if (object.instanceOf("IteratorAggregate")) retval.Set(FromIterator(info.GetIsolate(), object.call("getIterator")).value());
+        else if (object.instanceOf("IteratorAggregate")) retval.Set(FromIterator(isolate, object.call("getIterator")).value());
         
         // arrays themselves can be iterated
-        else if (object.isArray()) retval.Set(FromIterator(info.GetIsolate(), Php::Object("ArrayIterator", object)).value());
+        else if (object.isArray()) retval.Set(FromIterator(isolate, Php::Object("ArrayIterator", object)).value());
         
         // this should not happen
-        else retval.Set(FromIterator(info.GetIsolate(), Php::Object("EmptyIterator")).value());
+        else retval.Set(FromIterator(isolate, Php::Object("EmptyIterator")).value());
 
     }).ToLocalChecked();
 
@@ -349,19 +354,20 @@ v8::Intercepted Template::getIterator(const v8::PropertyCallbackInfo<v8::Value> 
  */
 v8::Intercepted Template::getIndex(unsigned index, const v8::PropertyCallbackInfo<v8::Value> &info)
 {
-    std::cout << "Template::getIndex" << std::endl;
+    // some variables
+    auto *isolate = info.GetIsolate();
 
     // the object that is being accessed
-    Php::Value object = Linker(info.GetIsolate(), info.This()).value();
+    Php::Value object = Linker(isolate, info.This()).value();
     
     // is the underlying variable an array?
     if (object.isArray() && object.contains(index))
     {
         // make the call
-        FromPhp value(info.GetIsolate(), object.get(static_cast<int64_t>(index)));
+        FromPhp value(isolate, object.get(static_cast<int64_t>(index)));
 
         // set the result
-        info.GetReturnValue().Set(v8::Global<v8::Value>(info.GetIsolate(), value));
+        info.GetReturnValue().Set(v8::Global<v8::Value>(isolate, value));
 
         // call was handled
         return v8::Intercepted::kYes;
@@ -371,17 +377,16 @@ v8::Intercepted Template::getIndex(unsigned index, const v8::PropertyCallbackInf
     if (object.isObject() && object.call("offsetExists", static_cast<int64_t>(index)))
     {
         // make the call
-        FromPhp value(info.GetIsolate(), object.call("offsetGet", static_cast<int64_t>(index)));
+        FromPhp value(isolate, object.call("offsetGet", static_cast<int64_t>(index)));
 
         // set the result
-        info.GetReturnValue().Set(v8::Global<v8::Value>(info.GetIsolate(), value));
+        info.GetReturnValue().Set(v8::Global<v8::Value>(isolate, value));
         
         // call was handled
         return v8::Intercepted::kYes;
     }
     
     // call was not handled
-    // @todo this is a change of behavior, originally we returned undefined
     return v8::Intercepted::kNo;
 }
 
@@ -393,8 +398,6 @@ v8::Intercepted Template::getIndex(unsigned index, const v8::PropertyCallbackInf
  */
 v8::Intercepted Template::setProperty(v8::Local<v8::Name> property, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info)
 {
-    std::cout << "Template::SetProperty" << std::endl;
-
     // @todo check implementation for arrays
     
     // the object that is being accessed
@@ -430,8 +433,6 @@ v8::Intercepted Template::setProperty(v8::Local<v8::Name> property, v8::Local<v8
  */
 v8::Intercepted Template::setIndex(unsigned index, v8::Local<v8::Value> input, const v8::PropertyCallbackInfo<void>& info)
 {
-    std::cout << "Template::setIndex" << std::endl;
-
     // the object that is being accessed
     Php::Value object = Linker(info.GetIsolate(), info.This()).value();
 
@@ -547,8 +548,11 @@ void Template::enumerateIndexes(const v8::PropertyCallbackInfo<v8::Array> &info)
  */
 void Template::method(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
+    // we need the isolate
+    auto *isolate = info.GetIsolate();
+    
     // we might need a scope
-    Scope scope(info.GetIsolate());
+    Scope scope(isolate);
     
     // the data is an array
     v8::Local<v8::Array> data(info.Data().As<v8::Array>());
@@ -557,20 +561,18 @@ void Template::method(const v8::FunctionCallbackInfo<v8::Value>& info)
     auto self = data->Get(scope, 0).As<v8::Object>().ToLocalChecked();
     auto prop = data->Get(scope, 1).As<v8::String>().ToLocalChecked();
     
-    // make sure the name can be used as c_str
-    v8::String::Utf8Value name(info.GetIsolate(), prop);
-
     // the object that is being accessed
-    // @todo what if object is gone?
-    Php::Value object = Linker(info.GetIsolate(), self).value();
+    Php::Value object = Linker(isolate, self).value();
+
+    // the callable
+    Php::Array callable({object, PhpVariable(isolate, prop)});
 
     // call the function
-    // @todo pass parameters
     // @todo catch exceptions
-    auto result = object.call(*name);
+    auto result = Php::call("call_user_func_array", callable, PhpArray(info));
 
     // store return value
-    info.GetReturnValue().Set(FromPhp(info.GetIsolate(), result));
+    info.GetReturnValue().Set(FromPhp(isolate, result));
 }
 
 /**
@@ -583,9 +585,8 @@ void Template::call(const v8::FunctionCallbackInfo<v8::Value>& info)
     Php::Value object = Linker(info.GetIsolate(), info.This()).value();
 
     // call the function
-    // @todo pass parameters
     // @todo catch exceptions
-    auto result = object();
+    auto result = Php::call("call_user_func_array", object, PhpArray(info));
 
     // store return value
     info.GetReturnValue().Set(FromPhp(info.GetIsolate(), result));

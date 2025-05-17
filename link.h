@@ -33,14 +33,18 @@ private:
     v8::Global<v8::Object> _object;
     
     /**
-     *  The linked Php::Value (this is a WeakReference instance, because we do not want to prevent the php object
-     *  to fall out of scope, if user-space is no longer interested in it, we are neither)
+     *  The linked Php::Value (can also be a WeakReference instance)
      *  @var Php::Value
-     * 
-     * 
-     *  @todo should we using weakreferences or regular references????
      */
     Php::Value _value;
+    
+    /**
+     *  Do we hold a weak reference to the PHP variable?
+     *  @var bool
+     */
+    bool _weak = false;
+    
+    
     
 public:
     /**
@@ -48,8 +52,12 @@ public:
      *  @param  isolate
      *  @param  object
      *  @param  value
+     *  @param  weak
      */
-    Link(v8::Isolate *isolate, const v8::Local<v8::Object> &object, const Php::Value &value) : _object(isolate, object), _value(value) //_value(Php::call("WeakReference::create", value))
+    Link(v8::Isolate *isolate, const v8::Local<v8::Object> &object, const Php::Value &value, bool weak) : 
+        _object(isolate, object), 
+        _value(weak ? Php::call("WeakReference::create", value) : value),
+        _weak(weak)
     {
         // install a function that will be called when the object is garbage collected
         _object.SetWeak<Link>(this, [](const v8::WeakCallbackInfo<Link> &info) {
@@ -84,13 +92,14 @@ public:
      */
     Php::Value value() const
     {
-        return _value;
+        // non-weak values are stored "as is"
+        if (!_weak) return _value;
         
-//        // the value must be an object
-//        if (!_value.isObject()) return nullptr;
-//        
-//        // get the underling object
-//        return _value.call("get");
+        // the value must be an object (a WeakReference instance)
+        if (!_value.isObject()) return nullptr;
+        
+        // get the underling object
+        return _value.call("get");
     }
 };
     

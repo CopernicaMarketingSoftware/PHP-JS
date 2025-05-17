@@ -99,9 +99,10 @@ public:
     /**
      *  Associate the object with a PHP variable
      *  @param  value
+     *  @param  weak
      *  @return Php::Value
      */
-    const Php::Value &attach(const Php::Value &value);
+    const Php::Value &attach(const Php::Value &value, bool weak = false);
     
     /**
      *  Detach the PHP object from the javascript object
