@@ -73,8 +73,15 @@ extern "C" {
             Php::ByVal("script", Php::Type::String, true),
         });
 
+        // add a script-method to assign
+        script.method<&JS::PhpScript::assign>("assign", {
+            Php::ByVal("name", Php::Type::String, true),
+            Php::ByVal("value", Php::Type::Null, true),
+            Php::ByVal("attribute", Php::Type::Numeric, false)
+        });
+
         // add a script-method to execute
-        script.method<&JS::PhpScript::execute>("evaluate", {
+        script.method<&JS::PhpScript::execute>("execute", {
             Php::ByVal("timeout", Php::Type::Numeric, false)
         });
 
