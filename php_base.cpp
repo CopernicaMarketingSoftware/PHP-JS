@@ -46,11 +46,13 @@ PhpBase::~PhpBase()
 PhpBase *PhpBase::unwrap(const Core *core, const Php::Value &value)
 {
     // must be the right class
-    // @todo also check function
-    if (!value.instanceOf(Names::Object)) return nullptr;
+    if (!value.instanceOf(Names::Object) && !value.instanceOf(Names::Function)) return nullptr;
 
     // get self-pointe
     PhpBase *self = (PhpBase *)value.implementation();
+    
+    // if not set (should not occur)
+    if (self == nullptr) return nullptr;
     
     // check if the object comes from the same core!
     return self->_core.get() == core ? self : nullptr;

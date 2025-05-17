@@ -40,7 +40,6 @@ Php::Value PhpObject::__get(const Php::Value &name) const
     auto property = object->Get(scope, FromPhp(_core->isolate(), name));
     
     // if it does not exist, we fall back on the default behavior
-    // @todo consider better error handling
     if (property.IsEmpty()) return Php::Base::__get(name);
 
     // convert the value to a PHP value

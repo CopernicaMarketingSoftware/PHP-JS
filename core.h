@@ -86,7 +86,7 @@ public:
     /**
      *  Destructor
      */
-    virtual ~Core();
+    virtual ~Core() = default;
 
     /**
      *  Given an isolate, it is possible to upgrade to the full context

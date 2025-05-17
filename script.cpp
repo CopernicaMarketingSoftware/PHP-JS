@@ -47,7 +47,6 @@ Script::Script(const std::shared_ptr<Core> &core, const char *source) : _core(co
     v8::TryCatch catcher(isolate);
     
     // compile the code into a script
-    // @todo what does the ToLocalChecked() stuff? what happens on failure?
     auto script = v8::String::NewFromUtf8(isolate, source).ToLocalChecked();
 
     // get the compiled program

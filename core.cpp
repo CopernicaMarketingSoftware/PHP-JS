@@ -46,16 +46,6 @@ Core::Core() : _platform(Platform::instance()), _isolate(this)
 }
 
 /**
- *  Destructor
- */
-Core::~Core()
-{
-    // @todo cleanup of global members?
-    
-    
-}
-
-/**
  *  Wrap a certain PHP object into a javascript object
  *  @param  object      MUST be an array or object!
  *  @return v8::Local<v8::Value>

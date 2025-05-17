@@ -26,8 +26,6 @@ namespace JS {
  */
 FromIterator::FromIterator(v8::Isolate *isolate, const Php::Value &value)
 {
-    // @todo should we be calling rewind() right away?
-    
     // we need a scope
     Scope scope(isolate);
     
@@ -120,7 +118,6 @@ void FromIterator::nxtmethod(const v8::FunctionCallbackInfo<v8::Value> &args)
     auto obj = args.This();
 
     // pointer to data
-    // @todo FunctionCallbackInfo also has a "Data" property
     auto *data = restore(isolate, obj);
     
     // if iterator was already destructed
