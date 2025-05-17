@@ -9,6 +9,8 @@ gives you the power to execute javascript right from your PHP script.
 This javascript code is executed using the Google V8 engine - the same engine
 that powers the Google Chrome browser and Node.js.
 
+A typical use case is server-side execution of user-defined JavaScript, for example in  
+applications that allow end users to write custom scripts or automation logic.
 
 ## HOW DOES IT WORK?
 
