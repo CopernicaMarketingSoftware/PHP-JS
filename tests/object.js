@@ -8,7 +8,7 @@
  *  @copyright 2025 Copernica BV
  */
 
-function x() { hallo(); hallo(); }
+function() { hallo(); hallo(); }
 
 x;
 

@@ -13,6 +13,7 @@
 #include "php_context.h"
 #include "php_object.h"
 #include "php_function.h"
+#include "php_script.h"
 #include "platform.h"
 #include "names.h"
 
@@ -48,25 +49,34 @@ extern "C" {
         extension.add(Php::Constant(JS::Names::DontDelete,    v8::DontDelete));
         extension.add(Php::Constant(JS::Names::DontEnumerate, v8::DontEnum));
 
-        // create our context class
+        // create the classes
         Php::Class<JS::PhpContext> context(JS::Names::Context);
+        Php::Class<JS::PhpScript> script(JS::Names::Script);
+        Php::Class<JS::PhpObject> object(JS::Names::Object);
+        Php::Class<JS::PhpFunction> function(JS::Names::Function);
 
-        // properties can be assigned
+        // properties can be assigned to the context
         context.method<&JS::PhpContext::assign>("assign", {
             Php::ByVal("name", Php::Type::String, true),
             Php::ByVal("value", Php::Type::Null, true),
             Php::ByVal("attribute", Php::Type::Numeric, false)
         });
 
-        // add a method to execute some script
+        // add a method to parse + execute some script
         context.method<&JS::PhpContext::evaluate>("evaluate", {
             Php::ByVal("script", Php::Type::String, true),
             Php::ByVal("timeout", Php::Type::Numeric, false)
         });
 
-        // classes for exporting objects and functions from ecmascript
-        Php::Class<JS::PhpObject> object(JS::Names::Object);
-        Php::Class<JS::PhpFunction> function(JS::Names::Function);
+        // add a script-method to construct the script
+        script.method<&JS::PhpScript::__construct>("__construct", {
+            Php::ByVal("script", Php::Type::String, true),
+        });
+
+        // add a script-method to execute
+        script.method<&JS::PhpScript::execute>("evaluate", {
+            Php::ByVal("timeout", Php::Type::Numeric, false)
+        });
 
         // add the classes to the extension
         extension.add(std::move(context));

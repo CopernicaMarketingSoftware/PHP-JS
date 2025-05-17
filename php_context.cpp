@@ -54,7 +54,7 @@ Php::Value PhpContext::assign(Php::Parameters &params)
 Php::Value PhpContext::evaluate(Php::Parameters &params)
 {
     // pass on
-    return _core->evaluate(params[0], params[1]);
+    return _core->evaluate(params[0], params.size() > 1 ? params[1] : Php::Value(0));
 }
     
 /**

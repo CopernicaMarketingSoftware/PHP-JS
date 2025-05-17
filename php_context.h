@@ -23,11 +23,6 @@
 namespace JS {
 
 /**
- *  Forward declarations
- */
-class External;
-
-/**
  *  Class definition
  */
 class PhpContext : public Php::Base

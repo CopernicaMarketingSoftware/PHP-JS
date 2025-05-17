@@ -16,7 +16,7 @@
 #include "scope.h"
 #include "php_object.h"
 #include "php_exception.h"
-#include "timeout.h"
+#include "script.h"
 #include "names.h"
 
 /**
@@ -129,53 +129,18 @@ Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const P
 
 /**
  *  Parse a piece of javascript code
- *  @param  script      the code to execute
+ *  @param  source      the code to execute
  *  @param  timeout     possible timeout in seconds
  *  @return Php::Value
  *  @throws Php::Exception
  */
-Php::Value Core::evaluate(const Php::Value &script, const Php::Value &timeout)
+Php::Value Core::evaluate(const Php::Value &source, const Php::Value &timeout)
 {
-    // scope for the isolate
-    v8::Isolate::Scope iscope(_isolate);
-
-    // stack-allocated handle scope
-    v8::HandleScope hscope(_isolate);
+    // create a script
+    Script script(shared_from_this(), source.rawValue());
     
-    // we need the context in a local handle
-    v8::Local<v8::Context> context(_context.Get(_isolate));
-    
-    // enter the context for compiling and running the script
-    v8::Context::Scope cscope(context);
-
-    // catch any errors that occur while either compiling or running the script
-    v8::TryCatch catcher(_isolate);
-    
-    // @todo force script to be a string?
-    
-    // compile the code into a script
-    // @todo what does the ToLocalChecked() stuff? what happens on failure?
-    v8::Local<v8::String> source = v8::String::NewFromUtf8(_isolate, script.rawValue()).ToLocalChecked();
-
-    // get the compiled program
-    // @todo should we be checking for errors?
-    v8::Local<v8::Script> compiled = v8::Script::Compile(context, source).ToLocalChecked();
-
-    // install a timeout
-    Timeout timer(_isolate, timeout);
-
-    // Run the script to get the result.
-    v8::MaybeLocal<v8::Value> result = compiled->Run(context);
-
-    // if no exception occured we're done
-    if (!catcher.HasCaught()) return result.IsEmpty() ? Php::Value(nullptr) : PhpVariable(_isolate, result.ToLocalChecked());
-
-    // if we have terminated we just throw a fixed error message as the catcher.Message()
-    // method won't return anything useful (in fact it'll return nothing meaning we just segfault)
-    if (catcher.HasTerminated()) throw Php::Exception("Execution timed out");
-
-    // pass this exception on to PHP userspace
-    throw PhpException(_isolate, catcher);
+    // evaluate the script
+    return script.execute(timeout);
 }
     
 /**
