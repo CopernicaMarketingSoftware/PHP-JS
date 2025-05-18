@@ -1,10 +1,9 @@
 /**
- *  context.h
+ *  PhpContext.h
  *
- *  The main javascript class, used for assigning variables
- *  and executing javascript
+ *  The main javascript context class as it is exposed to PHP space
  *
- *  @copyright 2015 Copernica B.V.
+ *  @copyright 2015 - 2025 Copernica B.V.
  */
 
 /**
@@ -16,8 +15,7 @@
  *  Dependencies
  */
 #include <phpcpp.h>
-#include <v8.h>
-#include "stack.h"
+#include "core.h"
 
 /**
  *  Start namespace
@@ -25,72 +23,33 @@
 namespace JS {
 
 /**
- *  Forward declarations
- */
-class External;
-
-/**
  *  Class definition
  */
-class Context : public Php::Base
+class PhpContext : public Php::Base
 {
 private:
     /**
-     *  The context
-     *  @var    Stack<V8::Context>
+     *  Shared pointer to the actual core data
+     *  @var std::shared_ptr<Core>
      */
-    Stack<v8::Context> _context;
+    std::shared_ptr<Core> _core;
 
-    /**
-     *  List of external pointers to track
-     *  @var    std::set<External>
-     */
-    std::set<External*> _externals;
 public:
     /**
      *  Constructor
      */
-    Context();
+    PhpContext();
 
     /**
      *  No copying allowed
-     *
      *  @param  that    the object we cannot copy
      */
-    Context(const Context &that) = delete;
-
-    /**
-     *  Move constructor
-     *
-     *  @param  that    object to move
-     */
-    Context(Context&&that) = default;
+    PhpContext(const PhpContext &that) = delete;
 
     /**
      *  Destructor
      */
-    virtual ~Context();
-
-    /**
-     *  Retrieve the currently active context
-     *
-     *  @return The current context, or a nullptr
-     */
-    static Context *current();
-
-    /**
-     *  Track a new external object
-     *
-     *  @var    External*
-     */
-    void track(External *external);
-
-    /**
-     *  Unregister an external object
-     *
-     *  @var    external    The external object we no longer to track
-     */
-    void untrack(External *external);
+    virtual ~PhpContext() = default;
 
     /**
      *  Assign a variable to the javascript context
@@ -108,12 +67,13 @@ public:
      *
      *  If not specified, the property will be writable, enumerable and
      *  deletable.
+     * 
+     *  @return Php::Value
      */
-    void assign(Php::Parameters &params);
+    Php::Value assign(Php::Parameters &params);
 
     /**
      *  Parse a piece of javascript code
-     *
      *  @param  params  array with one parameter: the code to execute
      *  @return Php::Value
      *  @throws Php::Exception

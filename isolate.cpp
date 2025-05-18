@@ -14,6 +14,8 @@
  *  @copyright 2015 Copernica B.V.
  */
 
+#if false
+
 /**
  *  Dependencies
  */
@@ -201,3 +203,5 @@ Isolate::operator v8::Isolate* () const
  *  End namespace
  */
 }
+
+#endif

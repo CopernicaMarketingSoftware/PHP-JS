@@ -3,18 +3,19 @@
  *
  *  Startup file for the PHP extension
  *
- *  @copyright 2015 Copernica BV
+ *  @copyright 2015 - 2025 Copernica BV
  */
 
 /**
  *  Dependencies
  */
 #include <phpcpp.h>
-#include "context.h"
-#include "jsobject.h"
-#include "isolate.h"
+#include "php_context.h"
+#include "php_object.h"
+#include "php_function.h"
+#include "php_script.h"
 #include "platform.h"
-#include <iostream>
+#include "names.h"
 
 /**
  *  The VERSION macro is going to be used as string with surrounded quotes
@@ -39,47 +40,58 @@ extern "C" {
     {
         // static(!) Php::Extension object that should stay in memory
         // for the entire duration of the process (that's why it's static)
-        static Php::Extension extension("PHP-JS", THE_VERSION);
+        static Php::Extension extension("PHP-JS2", THE_VERSION);
 
         // declare the accessor attributes
-        extension.add(Php::Constant("JS\\None",         v8::None));
-        extension.add(Php::Constant("JS\\ReadOnly",     v8::ReadOnly));
-        extension.add(Php::Constant("JS\\DontDelete",   v8::DontDelete));
-        extension.add(Php::Constant("JS\\DontEnumerate",v8::DontEnum));
+        // @todo use constants
+        extension.add(Php::Constant(JS::Names::None,          v8::None));
+        extension.add(Php::Constant(JS::Names::ReadOnly,      v8::ReadOnly));
+        extension.add(Php::Constant(JS::Names::DontDelete,    v8::DontDelete));
+        extension.add(Php::Constant(JS::Names::DontEnumerate, v8::DontEnum));
 
-        // create our context class
-        Php::Class<JS::Context> context("JS\\Context");
+        // create the classes
+        Php::Class<JS::PhpContext> context(JS::Names::Context);
+        Php::Class<JS::PhpScript> script(JS::Names::Script);
+        Php::Class<JS::PhpObject> object(JS::Names::Object);
+        Php::Class<JS::PhpFunction> function(JS::Names::Function);
 
-        // properties can be assigned
-        context.method<&JS::Context::assign>("assign", {
+        // properties can be assigned to the context
+        context.method<&JS::PhpContext::assign>("assign", {
             Php::ByVal("name", Php::Type::String, true),
             Php::ByVal("value", Php::Type::Null, true),
             Php::ByVal("attribute", Php::Type::Numeric, false)
         });
 
-        // add a method to execute some script
-        context.method<&JS::Context::evaluate>("evaluate", {
+        // add a method to parse + execute some script
+        context.method<&JS::PhpContext::evaluate>("evaluate", {
             Php::ByVal("script", Php::Type::String, true),
             Php::ByVal("timeout", Php::Type::Numeric, false)
         });
 
-        // an empty class for exporting object from ecmascript
-        Php::Class<JS::JSObject> object("JS\\Object");
+        // add a script-method to construct the script
+        script.method<&JS::PhpScript::__construct>("__construct", {
+            Php::ByVal("script", Php::Type::String, true),
+        });
+
+        // add a script-method to assign
+        script.method<&JS::PhpScript::assign>("assign", {
+            Php::ByVal("name", Php::Type::String, true),
+            Php::ByVal("value", Php::Type::Null, true),
+            Php::ByVal("attribute", Php::Type::Numeric, false)
+        });
+
+        // add a script-method to execute
+        script.method<&JS::PhpScript::execute>("execute", {
+            Php::ByVal("timeout", Php::Type::Numeric, false)
+        });
 
         // add the classes to the extension
         extension.add(std::move(context));
         extension.add(std::move(object));
+        extension.add(std::move(function));
 
-        // the isolate should get cleaned up after every pageview
-        // but because php can still keep references to c++ objects
-        // alive until after onIdle we clean up before every pageview
-        // and on shutdown instead
-        extension.onRequest(JS::Isolate::destroy);
-
-        // the platform and isolate needs to be cleaned up on engine shutdown
+        // the platform needs to be cleaned up on engine shutdown
         extension.onShutdown([]{
-            // clean up the isolate
-            JS::Isolate::destroy();
 
             // clean up the platform
             JS::Platform::shutdown();
