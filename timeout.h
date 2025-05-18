@@ -88,6 +88,22 @@ private:
         }
     }
     
+    /**
+     *  Helper method to wakeup the thread
+     *  This is a separate method to ensure that the must is freed after the call, so that the thread can finish
+     */
+    void finalize()
+    {
+        // obtain a lock to access the shared resource
+        std::unique_lock<std::mutex> lock(_mutex);
+        
+        // reset the isolate so that the thread can no longer terminate execution
+        _isolate = nullptr;
+        
+        // wake up the other thread
+        _cv.notify_one();
+    }
+    
 public:
     /**
      *  Constructor
@@ -117,14 +133,8 @@ public:
         // if never started in the first place
         if (!_thread.joinable()) return;
         
-        // obtain a lock to access the shared resource
-        std::unique_lock<std::mutex> lock(_mutex);
-        
-        // reset the isolate so that the thread can no longer terminate execution
-        _isolate = nullptr;
-        
-        // wake up the other thread
-        _cv.notify_one();
+        // finalize the thread
+        finalize();
         
         // join the thread
         _thread.join();

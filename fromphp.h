@@ -28,7 +28,7 @@ namespace JS {
  */
 class FromPhp : public v8::Local<v8::Value>
 {
-   public:
+public:
     /**
      *  Constructor
      *  @param  isolate

@@ -41,7 +41,7 @@ PhpContext::PhpContext() : _core(std::make_shared<Core>()) {}
 Php::Value PhpContext::assign(Php::Parameters &params)
 {
     // pass on
-    return _core->assign(params[0], params[1], params[2]);
+    return _core->assign(params[0], params[1], params.size() > 2 ? params[2] : Php::Value(v8::None));
 }
 
 /**

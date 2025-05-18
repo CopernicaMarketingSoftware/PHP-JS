@@ -85,7 +85,7 @@ v8::Local<v8::Value> Core::wrap(const Php::Value &object)
 Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const Php::Value &attributes)
 {
     // avoid that other contexts are assigned
-    if (value.instanceOf(Names::Context)) return false;
+    if (value.instanceOf(Names::Context) || value.instanceOf(Names::Script)) return false;
     
     // scope for the context
     Scope scope(shared_from_this());
@@ -94,24 +94,13 @@ Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const P
     v8::Local<v8::Object> global(scope.global());
 
     // the attribute for the newly assigned property
-    // @todo enable this?
-    //v8::PropertyAttribute   attribute(v8::None);
-    //
-    //// if an attribute was given, assign it
-    //if (params.size() > 2)
-    //{
-    //    // check the attribute that was selected
-    //    switch ((int16_t)params[2])
-    //    {
-    //        case v8::None:          attribute = v8::None;       break;
-    //        case v8::ReadOnly:      attribute = v8::ReadOnly;   break;
-    //        case v8::DontDelete:    attribute = v8::DontDelete; break;
-    //        case v8::DontEnum:      attribute = v8::DontEnum;   break;
-    //    }
-    //}
+    auto attribute = attributes.isNull() ? v8::None : static_cast<v8::PropertyAttribute>(attributes.numericValue());
+    
+    // convert the property to a javascript name
+    v8::Local<v8::Value> property = FromPhp(_isolate, name.clone(Php::Type::String));
 
     // store the value
-    v8::Maybe<bool> result = global->Set(scope, FromPhp(_isolate, name), FromPhp(_isolate, value));
+    v8::Maybe<bool> result = global->DefineOwnProperty(scope, property.As<v8::String>(), FromPhp(_isolate, value), attribute);
     
     // check for success
     return result.IsJust() && result.FromJust();
@@ -127,7 +116,7 @@ Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const P
 Php::Value Core::evaluate(const Php::Value &source, const Php::Value &timeout)
 {
     // create a script
-    Script script(shared_from_this(), source.rawValue());
+    Script script(shared_from_this(), source.clone(Php::Type::String).rawValue());
     
     // evaluate the script
     return script.execute(timeout);

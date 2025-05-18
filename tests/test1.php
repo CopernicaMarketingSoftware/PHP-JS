@@ -122,6 +122,7 @@ try
 catch (Exception $exception)
 {
     // this was the expected place to catch the "123" exception
+    echo("got exception ".$exception->getMessage()."\n");
 }
 
 // @todo

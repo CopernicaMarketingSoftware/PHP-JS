@@ -62,15 +62,6 @@ private:
      */
     std::vector<std::unique_ptr<Template>> _templates;
 
-    
-    /**
-     *  Run the event loop for this isolate
-     *  This will resolve promises, expire timers, etc
-     *  @return ???
-     *  @todo needed?
-     */
-    void run();
-    
 public:
     /**
      *  Constructor
