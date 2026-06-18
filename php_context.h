@@ -3,7 +3,7 @@
  *
  *  The main javascript context class as it is exposed to PHP space
  *
- *  @copyright 2015 - 2025 Copernica B.V.
+ *  @copyright 2015 - 2026 Copernica B.V.
  */
 
 /**
@@ -71,6 +71,12 @@ public:
      *  @return Php::Value
      */
     Php::Value assign(Php::Parameters &params);
+
+    /**
+     *  Reset the variables within this context
+     *  @return Php::Value
+     */
+    Php::Value reset();
 
     /**
      *  Parse a piece of javascript code

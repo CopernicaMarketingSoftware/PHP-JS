@@ -3,7 +3,7 @@
  *
  *  Class that is used to parse and evaluate a script.
  *
- *  @copyright 2015 - 2025 Copernica B.V.
+ *  @copyright 2015 - 2026 Copernica B.V.
  */
 
 /**
@@ -34,10 +34,10 @@ private:
     std::shared_ptr<Core> _core;
 
     /**
-     *  The compiled script
-     *  @var v8::Global<v8::Script>
+     *  The compiled script, not bound to a context. This allows us to reset the context between calls
+     *  @var v8::Global<v8::UnboundScript>
      */
-    v8::Global<v8::Script> _script;
+    v8::Global<v8::UnboundScript> _script;
 
 
 public:

@@ -4,7 +4,7 @@
  *  Implementation file for the PhpContext class
  * 
  *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
- *  @copyright 2025 Copernica BV
+ *  @copyright 2025 - 2026 Copernica BV
  */
 
 /**
@@ -41,7 +41,23 @@ PhpContext::PhpContext() : _core(std::make_shared<Core>()) {}
 Php::Value PhpContext::assign(Php::Parameters &params)
 {
     // pass on
-    return _core->assign(params[0], params[1], params.size() > 2 ? params[2] : Php::Value(v8::None));
+    _core->assign(params[0], params[1], params.size() > 2 ? params[2] : Php::Value(v8::None));
+    
+    // allow chaining
+    return this;
+}
+
+/**
+ *  Reset the variables within this context
+ *  @return Php::Value
+ */
+Php::Value PhpContext::reset()
+{
+    // pass on
+    _core->reset();
+    
+    // allow chaining
+    return this;
 }
 
 /**

@@ -3,7 +3,7 @@
  *
  *  Startup file for the PHP extension
  *
- *  @copyright 2015 - 2025 Copernica BV
+ *  @copyright 2015 - 2026 Copernica BV
  */
 
 /**
@@ -62,6 +62,9 @@ extern "C" {
             Php::ByVal("attribute", Php::Type::Numeric, false)
         });
 
+        // reset the context, start with a clean sheet
+        context.method<&JS::PhpContext::reset>("reset");
+
         // add a method to parse + execute some script
         context.method<&JS::PhpContext::evaluate>("evaluate", {
             Php::ByVal("script", Php::Type::String, true),
@@ -80,6 +83,9 @@ extern "C" {
             Php::ByVal("attribute", Php::Type::Numeric, false)
         });
 
+        // add a script-method to reset
+        script.method<&JS::PhpScript::reset>("reset");
+
         // add a script-method to execute
         script.method<&JS::PhpScript::execute>("execute", {
             Php::ByVal("timeout", Php::Type::Numeric, false)
@@ -89,6 +95,7 @@ extern "C" {
         extension.add(std::move(context));
         extension.add(std::move(object));
         extension.add(std::move(function));
+        extension.add(std::move(script));
 
         // the platform needs to be cleaned up on engine shutdown
         extension.onShutdown([]{

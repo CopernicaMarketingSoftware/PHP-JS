@@ -6,7 +6,7 @@
  *  using "$script = new JS\Script($sourcecode)" or via 
  *  "$script = JS\Context::compile($source)".
  *
- *  @copyright 2015 - 2025 Copernica B.V.
+ *  @copyright 2015 - 2026 Copernica B.V.
  */
 
 /**
@@ -92,7 +92,23 @@ public:
     Php::Value assign(Php::Parameters &params)
     {
         // pass on
-        return _core->assign(params[0], params[1], params.size() > 2 ? params[2] : Php::Value(v8::None));
+        _core->assign(params[0], params[1], params.size() > 2 ? params[2] : Php::Value(v8::None));
+        
+        // allow chaining
+        return this;
+    }
+    
+    /**
+     *  Reset the script
+     *  @return Php::Value
+     */
+    Php::Value reset()
+    {
+        // pass on
+        _core->reset();
+
+        // allow chaining
+        return this;
     }
 
     /**

@@ -6,7 +6,7 @@
  *  again.
  * 
  *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
- *  @copyright 2025 Copernica BV
+ *  @copyright 2025 - 2026 Copernica BV
  */
 
 /**

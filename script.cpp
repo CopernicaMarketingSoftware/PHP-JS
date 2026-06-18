@@ -4,7 +4,7 @@
  *  Implementation file for the Script class
  * 
  *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
- *  @copyright 2025 Copernica BV
+ *  @copyright 2025 - 2026 Copernica BV
  */
 
 /**
@@ -49,9 +49,12 @@ Script::Script(const std::shared_ptr<Core> &core, const char *source) : _core(co
     // compile the code into a script
     auto script = v8::String::NewFromUtf8(isolate, source).ToLocalChecked();
 
-    // get the compiled program
-    auto compiled = v8::Script::Compile(scope, script);
-    
+    // dont know what this does
+    v8::ScriptCompiler::Source script_source(script);
+
+    // compile the script, not yet bound to a context
+    auto compiled = v8::ScriptCompiler::CompileUnboundScript(isolate, &script_source);
+
     // check for success
     if (!compiled.IsEmpty()) _script.Reset(isolate, compiled.ToLocalChecked());
 
@@ -79,8 +82,11 @@ Php::Value Script::execute(time_t timeout)
     // for catching errors
     v8::TryCatch catcher(isolate);
 
+    // bind the script to the current context
+    v8::Local<v8::Script> script = _script.Get(isolate)->BindToCurrentContext();
+
     // Run the script to get the result.
-    auto result = _script.Get(isolate)->Run(scope);
+    auto result = script->Run(scope);
 
     // if no exception occured we're done
     if (!catcher.HasCaught()) return result.IsEmpty() ? Php::Value(nullptr) : PhpVariable(isolate, result.ToLocalChecked());

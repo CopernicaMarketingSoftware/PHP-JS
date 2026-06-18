@@ -4,7 +4,7 @@
  *  The main javascript class, used for assigning variables
  *  and executing javascript
  *
- *  @copyright 2015 - 2025 Copernica B.V.
+ *  @copyright 2015 - 2026 Copernica B.V.
  */
 
 /**
@@ -120,9 +120,15 @@ public:
      *  @param  name        name of property to assign  required
      *  @param  value       value to be assigned
      *  @param  attribytes  property attributes
-     *  @return Php::Value
+     *  @return bool
      */
-    Php::Value assign(const Php::Value &name, const Php::Value &value, const Php::Value &attributes);
+    bool assign(const Php::Value &name, const Php::Value &value, const Php::Value &attributes);
+
+    /**
+     *  Reset the platform, start with a clean sheet
+     *  @return bool
+     */
+    void reset();
 
     /**
      *  Parse a piece of javascript code

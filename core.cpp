@@ -4,7 +4,7 @@
  *  Implementation file for the context class
  * 
  *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
- *  @copyright 2025 Copernica BV
+ *  @copyright 2025 - 2026 Copernica BV
  */
 
 /**
@@ -80,9 +80,9 @@ v8::Local<v8::Value> Core::wrap(const Php::Value &object)
  *  @param  name        name of property to assign  required
  *  @param  value       value to be assigned
  *  @param  attribytes  property attributes
- *  @return Php::Value
+ *  @return bool
  */
-Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const Php::Value &attributes)
+bool Core::assign(const Php::Value &name, const Php::Value &value, const Php::Value &attributes)
 {
     // avoid that other contexts are assigned
     if (value.instanceOf(Names::Context) || value.instanceOf(Names::Script)) return false;
@@ -105,6 +105,22 @@ Php::Value Core::assign(const Php::Value &name, const Php::Value &value, const P
     // check for success
     return result.IsJust() && result.FromJust();
 }
+
+/**
+ *  Reset the platform, start with a clean sheet
+ *  @return bool
+ */
+void Core::reset()
+{
+    // when we access the isolate, we need a scope
+    v8::HandleScope scope(_isolate);
+
+    // create a context
+    v8::Local<v8::Context> context(v8::Context::New(_isolate));
+
+    // we want to persist the context
+    _context.Reset(_isolate, context);
+}    
 
 /**
  *  Parse a piece of javascript code
