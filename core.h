@@ -77,10 +77,7 @@ public:
      *  Given an isolate, it is possible to upgrade to the full context
      *  @return std::shared_ptr
      */
-    static std::shared_ptr<Core> upgrade(v8::Isolate *isolate)
-    {
-        return Isolate::core(isolate)->shared_from_this();
-    }
+    static std::shared_ptr<Core> upgrade(v8::Isolate *isolate);
 
     /**
      *  The isolate of this context

@@ -59,13 +59,6 @@ private:
      */
     std::vector<std::unique_ptr<Template>> _templates;
 
-    /**
-     *  Indexes for storing pointers
-     *  @var    int
-     */
-    static const int CORE_INDEX = 1;
-    static const int ISOLATE_INDEX = 1;
-
 public:
     /**
      *  Constructor
@@ -79,10 +72,6 @@ public:
         
         // construct the isolate
         _isolate = v8::Isolate::New(_params);
-        
-        // store a pointer to the isolate and core
-        _isolate->SetData(ISOLATE_INDEX, this);
-        _isolate->SetData(CORE_INDEX, core);
     }
     
     /**
@@ -128,17 +117,6 @@ public:
         
         // use it
         return *_templates.back();
-    }
-
-    /**
-     *  Get access to the core
-     *  @param  isolate
-     *  @return Core
-     */
-    static Core *core(v8::Isolate *isolate)
-    {
-        // is stored in a data field
-        return static_cast<Core *>(isolate->GetData(CORE_INDEX));
     }
 
     /**

@@ -35,8 +35,28 @@ Core::Core() : _platform(Platform::instance()), _isolate(this)
     // create a context
     v8::Local<v8::Context> context(v8::Context::New(_isolate));
 
+    // store pointer to ourselves
+    context->SetAlignedPointerInEmbedderData(0, this);
+
     // we want to persist the context
     _context.Reset(_isolate, context);
+}
+
+/**
+ *  Given an isolate, it is possible to upgrade to the full context
+ *  @return std::shared_ptr
+ */
+std::shared_ptr<Core> Core::upgrade(v8::Isolate *isolate)
+{
+    // get the context
+    // @todo or should this sometimes be be GetCreationContext()????
+    auto context = isolate->GetCurrentContext();
+    
+    // get the core object
+    auto *core = static_cast<Core *>(context->GetAlignedPointerFromEmbedderData(0));
+    
+    // get the shared pointer
+    return core->shared_from_this();
 }
 
 /**
