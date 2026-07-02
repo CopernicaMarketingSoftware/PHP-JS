@@ -4,14 +4,13 @@
  *  Implementation file for the Template class.
  * 
  *  @author Emiel Bruijntjes <emiel.bruijntjes@copernica.com>
- *  @copyright 2025 Copernica BV
+ *  @copyright 2025 - 2026 Copernica BV
  */
 
 /**
  *  Dependencies
  */
 #include "template.h"
-#include "core.h"
 #include "scope.h"
 #include "linker.h"
 #include "fromphp.h"
@@ -111,17 +110,14 @@ v8::Local<v8::Value> Template::apply(const Php::Value &value) const
     // the actual ojbect
     auto object = result.ToLocalChecked();
     
-    // arrays cannot be weak-referenced, so we won't link them
-    if (!value.isObject()) return object;
-
     // object to link the two objects together
     Linker linker(_isolate, object);
     
     // attach the objects
-    linker.attach(value);
+    linker.attach(value, false);
 
     // get the object
-    return result.ToLocalChecked();
+    return object;
 }
 
 /**

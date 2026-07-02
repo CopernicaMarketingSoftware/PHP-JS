@@ -53,20 +53,7 @@ v8::Local<v8::Value> Core::wrap(const Php::Value &object)
     if (instance != nullptr) return instance->handle();
     
     // check the prototypes that we have
-    for (auto &prototype : _templates)
-    {
-        // is this one compatible with the object
-        if (!prototype->matches(object)) continue;
-        
-        // we can apply this prototype
-        return prototype->apply(object);
-    }
-    
-    // we need a new template
-    _templates.emplace_back(new Template(_isolate, object));
-    
-    // use it
-    return _templates.back()->apply(object);
+    return _isolate.prototype(object).apply(object);
 }
 
 /**

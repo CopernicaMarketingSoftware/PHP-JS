@@ -23,6 +23,7 @@
  *  Dependencies
  */
 #include <v8.h>
+#include "template.h"
 
 /**
  *  Start namespace
@@ -53,10 +54,17 @@ private:
     v8::Isolate *_isolate;
 
     /**
+     *  Templates for wrapping objects
+     *  @var std::vector
+     */
+    std::vector<std::unique_ptr<Template>> _templates;
+
+    /**
      *  Indexes for storing pointers
      *  @var    int
      */
     static const int CORE_INDEX = 1;
+    static const int ISOLATE_INDEX = 1;
 
 public:
     /**
@@ -72,7 +80,8 @@ public:
         // construct the isolate
         _isolate = v8::Isolate::New(_params);
         
-        // store a pointer to the core
+        // store a pointer to the isolate and core
+        _isolate->SetData(ISOLATE_INDEX, this);
         _isolate->SetData(CORE_INDEX, core);
     }
     
@@ -87,11 +96,38 @@ public:
      */
     virtual ~Isolate()
     {
+        // remove the templates first
+        _templates.clear();
+        
         // free up the isolate
         _isolate->Dispose();
         
         // free up allocator
         delete _params.array_buffer_allocator;
+    }
+
+    /**
+     *  Look for an appropriate template
+     *  @param  object
+     *  @return Template
+     */
+    const Template &prototype(const Php::Value &object)
+    {
+        // check the prototypes that we have
+        for (const auto &prototype : _templates)
+        {
+            // is this one compatible with the object
+            if (!prototype->matches(object)) continue;
+            
+            // we can apply this prototype
+            return *prototype;
+        }
+        
+        // we need a new template
+        _templates.emplace_back(new Template(_isolate, object));
+        
+        // use it
+        return *_templates.back();
     }
 
     /**

@@ -46,3 +46,15 @@ for (var x in array)
 {
     alert('found index '+i+' '+array[i]);
 }
+
+alert('traverse 5 '+array.length);
+for (var x of array)
+{
+    alert('found value '+x);
+}
+
+alert('traverse 6');
+for (var i = 0; i < array.length; ++i)
+{
+    alert('found index '+i+' '+array[i]);
+}
