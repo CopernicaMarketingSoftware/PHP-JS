@@ -51,12 +51,6 @@ private:
     v8::Global<v8::Context> _context;
     
     /**
-     *  The private symbol that we use for associating php objects to js objects
-     *  @var v8::Global<v8::Private>
-     */
-    v8::Global<v8::Private> _symbol;
-
-    /**
      *  Templates for wrapping objects
      *  @var std::vector
      */
@@ -93,12 +87,6 @@ public:
      *  @return Isolate
      */
     v8::Isolate *isolate() { return _isolate; }
-    
-    /** 
-     *  The symbol used for linkin php and js objects to each other
-     *  @return v8::Global<v8::Private>
-     */
-    const v8::Global<v8::Private> &symbol() const { return _symbol; }
     
     /**
      *  Wrap a certain PHP object into a javascript object

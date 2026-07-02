@@ -99,6 +99,12 @@ private:
         bool next() { _value.call("next"); return valid(); }
     };
 
+    /**
+     *  Helper method gets the symbol to associate data with an iterator
+     *  @param  isolate
+     *  @return v8::Local<v8::Private>
+     */
+    static v8::Local<v8::Private> symbol(v8::Isolate *isolate);
 
     /**
      *  Helper method to get access to the underlying data

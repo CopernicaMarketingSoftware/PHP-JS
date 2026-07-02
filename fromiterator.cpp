@@ -29,14 +29,11 @@ FromIterator::FromIterator(v8::Isolate *isolate, const Php::Value &value)
     // we need a scope
     Scope scope(isolate);
     
-    // we need the context for looking up the symbol
-    auto core = Core::upgrade(isolate);
-    
     // create a new object
     _iterator = v8::Object::New(isolate);
     
     // store pointer to state data
-    _iterator->SetPrivate(scope, core->symbol().Get(isolate), v8::External::New(isolate, new Data(isolate, value)));
+    _iterator->SetPrivate(scope, symbol(isolate), v8::External::New(isolate, new Data(isolate, value)));
     
     // we need to set a "next" method and a "return" method on the iterator
     auto nxtlabel = v8::String::NewFromUtf8Literal(isolate, "next");
@@ -55,6 +52,17 @@ FromIterator::FromIterator(v8::Isolate *isolate, const Php::Value &value)
 }
 
 /**
+ *  Helper method gets the symbol to associate data with an iterator
+ *  @param  isolate
+ *  @return v8::Local<v8::Private>
+ */
+v8::Local<v8::Private> FromIterator::symbol(v8::Isolate *isolate)
+{
+    // lookup the symbol
+    return v8::Private::ForApi(isolate, v8::String::NewFromUtf8Literal(isolate, "php-js.iterator"));
+}
+
+/**
  *  Helper method to get access to underlying data
  *  @param  isolate
  *  @param  obj
@@ -62,14 +70,11 @@ FromIterator::FromIterator(v8::Isolate *isolate, const Php::Value &value)
  */
 FromIterator::Data *FromIterator::restore(v8::Isolate *isolate, const v8::Local<v8::Object> &obj)
 {
-    // we need the symbol for linking pointers to objects
-    auto symbol = Core::upgrade(isolate)->symbol().Get(isolate);
-    
     // we need a local value
     v8::Local<v8::Value> val;
 
     // get the symbol value
-    if (!obj->GetPrivate(isolate->GetCurrentContext(), symbol).ToLocal(&val)) return nullptr;
+    if (!obj->GetPrivate(isolate->GetCurrentContext(), symbol(isolate)).ToLocal(&val)) return nullptr;
     
     // should be external
     if (!val->IsExternal()) return nullptr;
@@ -95,11 +100,8 @@ void FromIterator::destruct(v8::Isolate *isolate, const v8::Local<v8::Object> &o
     // destruct the object
     delete data;
 
-    // we need the symbol for linking pointers to objects
-    auto symbol = Core::upgrade(isolate)->symbol().Get(isolate);
-
     // unset the symbol value
-    obj->DeletePrivate(isolate->GetCurrentContext(), symbol);
+    obj->DeletePrivate(isolate->GetCurrentContext(), symbol(isolate));
 }
 
 /**

@@ -105,7 +105,7 @@ $context->assign('alert', function($output) {
 });
 
 $context->assign('object', new MyClass("abcd"));
-
+$context->assign('array', [1,2,3,4,5,6]);
 $context->assign('create', function($x) {
     
     

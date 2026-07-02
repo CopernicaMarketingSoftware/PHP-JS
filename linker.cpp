@@ -21,20 +21,11 @@ namespace JS {
 
 /**
  *  Constructor
- *  @param  isolate     the active isolate
- *  @param  key         the private symbol that is associated storing external pointers
- *  @param  object      the javascript object to be linked
- */
-Linker::Linker(v8::Isolate *isolate, const v8::Global<v8::Private> &key, const v8::Local<v8::Object> &object) :
-    _isolate(isolate), _key(key.Get(isolate)), _object(object) {}
-
-/**
- *  Constructor
  *  @param  isolage     the isolate
  *  @param  object      the javascript object to be linked
  */
 Linker::Linker(v8::Isolate *isolate, const v8::Local<v8::Object> &object) :
-    Linker(isolate, Core::upgrade(isolate)->symbol(), object) {}
+    _isolate(isolate), _key(v8::Private::ForApi(isolate, v8::String::NewFromUtf8Literal(isolate, "php-js.linker"))), _object(object) {}
 
 /**
  *  Get the internal pointer

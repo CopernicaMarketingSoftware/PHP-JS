@@ -63,14 +63,6 @@ private:
      */
     Link *pointer() const;
 
-    /**
-     *  Constructor
-     *  @param  isolate     the active isolate
-     *  @param  key         the private symbol that is associated storing external pointers
-     *  @param  object      the javascript object to be linked
-     */
-    Linker(v8::Isolate *isolate, const v8::Global<v8::Private> &key, const v8::Local<v8::Object> &object);
-
 public:
     /**
      *  Constructor

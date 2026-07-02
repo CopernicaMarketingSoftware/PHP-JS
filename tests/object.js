@@ -10,8 +10,6 @@
 
 function() { hallo(); hallo(); }
 
-x;
-
 // @todo this was causing a crash
 //const i = y[Symbol.iterator];
 //

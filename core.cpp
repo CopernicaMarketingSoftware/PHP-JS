@@ -37,12 +37,6 @@ Core::Core() : _platform(Platform::instance()), _isolate(this)
 
     // we want to persist the context
     _context.Reset(_isolate, context);
-    
-    // symbol for linking js and php objects together
-    v8::Local<v8::Private> key = v8::Private::ForApi(_isolate, v8::String::NewFromUtf8Literal(_isolate, "js2php"));
-    
-    // persist the key
-    _symbol.Reset(_isolate, key);
 }
 
 /**

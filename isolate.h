@@ -114,6 +114,15 @@ public:
     }
 
     /**
+     *  Get the key for associating js and php objects
+     *  @return v8::Local<v8::Private>
+     */
+    v8::Local<v8::Private> symbol()
+    {
+        return v8::Private::ForApi(_isolate, v8::String::NewFromUtf8Literal(_isolate, "php-js.object"));
+    }
+
+    /**
      *  Get access to the isolate
      *  @param  isolate
      *  @return Isolate
