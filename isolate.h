@@ -56,7 +56,6 @@ private:
      *  Indexes for storing pointers
      *  @var    int
      */
-    static const int ISOLATE_INDEX = 0;
     static const int CORE_INDEX = 1;
 
 public:
@@ -75,9 +74,6 @@ public:
         
         // store a pointer to the core
         _isolate->SetData(CORE_INDEX, core);
-        
-        // store a pointer to the isolate
-        _isolate->SetData(ISOLATE_INDEX, this);
     }
     
     /**
@@ -96,26 +92,6 @@ public:
         
         // free up allocator
         delete _params.array_buffer_allocator;
-    }
-
-    /**
-     *  Get the key for associating js and php objects
-     *  @return v8::Local<v8::Private>
-     */
-    v8::Local<v8::Private> symbol()
-    {
-        return v8::Private::ForApi(_isolate, v8::String::NewFromUtf8Literal(_isolate, "php-js.object"));
-    }
-
-    /**
-     *  Get access to the isolate
-     *  @param  isolate
-     *  @return Isolate
-     */
-    static Isolate *update(v8::Isolate *isolate)
-    {
-        // is stored in a data field
-        return static_cast<Isolate *>(isolate->GetData(ISOLATE_INDEX));
     }
 
     /**
