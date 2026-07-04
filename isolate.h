@@ -45,28 +45,36 @@ private:
      *  The create-params
      *  v8::Isolate::CreateParams
      */
-    v8::Isolate::CreateParams _params;
+    static v8::Isolate::CreateParams _params;
 
     /**
      *  The underlying isolate
      *  @var    v8::Isolate*
      */
-    v8::Isolate *_isolate;
+    static v8::Isolate *_isolate;
 
     /**
      *  Templates for wrapping objects
      *  @var std::vector
      */
-    std::vector<Template> _templates;
+    static std::vector<Template> _templates;
+    
+    /**
+     *  Total number of instances
+     *  @var size_t
+     */
+    static size_t _instances;
     
 public:
     /**
-     *  Constructor
-     *  A core-pointer has to be passed to the isolate, to make the Core::upgrade() method work
+     *  Constructor that is called every time a "core" is created that needs an isolate
      *  @paran  context
      */
     Isolate(Core *core)
     {
+        // do we already have an isolate
+        if (_instances++ != 0) return;
+        
         // we need an allocator
         _params.array_buffer_allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
         
@@ -85,6 +93,9 @@ public:
      */
     virtual ~Isolate()
     {
+        // was this the last reference
+        if (--_instances != 0) return;
+        
         // remove the templates first before we dispose the isolate
         _templates.clear();
         
