@@ -137,6 +137,12 @@ public:
     Template(v8::Isolate *isolate, const Php::Value &value);
     
     /**
+     *  Move constructor (to allow storing templates in a std::vector)
+     *  @param  that
+     */
+    Template(Template &&that) = default;
+    
+    /**
      *  Destructor
      */
     virtual ~Template();

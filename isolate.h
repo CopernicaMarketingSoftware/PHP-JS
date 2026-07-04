@@ -57,8 +57,8 @@ private:
      *  Templates for wrapping objects
      *  @var std::vector
      */
-    std::vector<std::unique_ptr<Template>> _templates;
-
+    std::vector<Template> _templates;
+    
 public:
     /**
      *  Constructor
@@ -85,7 +85,7 @@ public:
      */
     virtual ~Isolate()
     {
-        // remove the templates first
+        // remove the templates first before we dispose the isolate
         _templates.clear();
         
         // free up the isolate
@@ -106,17 +106,17 @@ public:
         for (const auto &prototype : _templates)
         {
             // is this one compatible with the object
-            if (!prototype->matches(object)) continue;
+            if (!prototype.matches(object)) continue;
             
             // we can apply this prototype
-            return *prototype;
+            return prototype;
         }
         
         // we need a new template
-        _templates.emplace_back(new Template(_isolate, object));
+        _templates.emplace_back(_isolate, object);
         
         // use it
-        return *_templates.back();
+        return _templates.back();
     }
 
     /**
