@@ -18,7 +18,6 @@
 #include <phpcpp.h>
 #include "platform.h"
 #include "isolate.h"
-#include "template.h"
 
 /**
  *  Start namespace
@@ -50,12 +49,6 @@ private:
      */
     v8::Global<v8::Context> _context;
     
-    /**
-     *  Templates for wrapping objects
-     *  @var std::vector
-     */
-    std::vector<std::unique_ptr<Template>> _templates;
-
 public:
     /**
      *  Constructor
