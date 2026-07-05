@@ -18,6 +18,7 @@
 #include "php_exception.h"
 #include "script.h"
 #include "names.h"
+#include "linker.h"
 
 /**
  *  Begin of namespace
@@ -37,6 +38,38 @@ Core::Core() : _platform(Platform::instance()), _isolate(this)
 
     // store pointer to ourselves
     context->SetAlignedPointerInEmbedderData(0, this);
+
+    // we want to persist the context
+    _context.Reset(_isolate, context);
+}
+
+/**
+ *  Constructor with an alternative root object
+ *  @param  root
+ */
+Core::Core(const Php::Value &root) : _platform(Platform::instance()), _isolate(this)
+{
+    // when we access the isolate, we need a scope
+    v8::HandleScope hscope(_isolate);
+    
+    // create a template for the root
+    Template prototype(_isolate);
+    
+    // create a context
+    v8::Local<v8::Context> context(v8::Context::New(_isolate, nullptr, prototype.handle()));
+
+    // make sure there is "current context" (needed by the linker, see below)
+    v8::Context::Scope scope(context);
+
+    // store pointer to ourselves
+    context->SetAlignedPointerInEmbedderData(0, this);
+
+    // v8 has now constructed a global object based on the special _root-template, we still
+    // have to ensure that it is associated with the php space root object
+    Linker linker(_isolate, context->Global());
+    
+    // associate the php object with the global object
+    linker.attach(root, false);
 
     // we want to persist the context
     _context.Reset(_isolate, context);

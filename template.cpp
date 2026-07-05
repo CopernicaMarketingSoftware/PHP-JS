@@ -25,6 +25,28 @@
 namespace JS {
 
 /**
+ *  Constructor for root objects
+ *  @param  isolate
+ */
+Template::Template(v8::Isolate *isolate) : _isolate(isolate)
+{
+    // get the template as local object
+    v8::Local<v8::ObjectTemplate> tpl(v8::ObjectTemplate::New(isolate));
+    
+    // register the property handlers for objects and arrays
+    tpl->SetHandler(v8::NamedPropertyHandlerConfiguration(
+        &Template::getProperty,                                   // get access to a property         
+        &Template::setProperty,                                   // assign a property
+        nullptr,                                                  // query to check which properties exist
+        nullptr,                                                  // remove a property
+        nullptr                                                   // enumerate over an object
+    ));
+
+    // make sure handler is preserved
+    _template.Reset(isolate, tpl);
+}
+
+/**
  *  Constructor
  *  Watched out: the passed in PHP-value is only used to decide which handlers to install,
  *  but the template can after that be used for multiple PHP variables with a similar

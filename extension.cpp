@@ -55,6 +55,11 @@ extern "C" {
         Php::Class<JS::PhpObject> object(JS::Names::Object);
         Php::Class<JS::PhpFunction> function(JS::Names::Function);
 
+        // add a script-method to construct the script
+        context.method<&JS::PhpContext::__construct>("__construct", {
+            Php::ByVal("root", Php::Type::Object, false),
+        });
+
         // properties can be assigned to the context
         context.method<&JS::PhpContext::assign>("assign", {
             Php::ByVal("name", Php::Type::String, true),

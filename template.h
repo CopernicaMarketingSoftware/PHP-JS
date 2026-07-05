@@ -130,7 +130,13 @@ private:
 
 public:
     /**
-     *  Constructor
+     *  Constructor for root objects
+     *  @param  isolate
+     */
+    Template(v8::Isolate *isolate);
+
+    /**
+     *  Constructor for one specific object
      *  @param  isolate
      *  @param  value
      */
@@ -146,6 +152,12 @@ public:
      *  Destructor
      */
     virtual ~Template();
+
+    /**
+     *  Get the template-handle
+     *  @return v8::Local<v8::ObjectTemplate>
+     */
+    v8::Local<v8::ObjectTemplate> handle() { return _template.Get(_isolate); }
 
     /**
      *  Is this template useful for a certain object

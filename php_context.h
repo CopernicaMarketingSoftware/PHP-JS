@@ -38,7 +38,7 @@ public:
     /**
      *  Constructor
      */
-    PhpContext();
+    PhpContext() = default;
 
     /**
      *  No copying allowed
@@ -50,6 +50,12 @@ public:
      *  Destructor
      */
     virtual ~PhpContext() = default;
+
+    /**
+     *  Constructor
+     *  @param  params
+     */
+    void __construct(Php::Parameters &params);
 
     /**
      *  Assign a variable to the javascript context

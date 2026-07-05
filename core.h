@@ -51,9 +51,15 @@ private:
     
 public:
     /**
-     *  Constructor
+     *  Constructor with a default root
      */
     Core();
+    
+    /**
+     *  Constructor with an alternative root object
+     *  @param  root
+     */
+    Core(const Php::Value &root);
 
     /**
      *  No copying allowed

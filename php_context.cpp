@@ -19,8 +19,16 @@ namespace JS {
 
 /**
  *  Constructor
+ *  @param  params
  */
-PhpContext::PhpContext() : _core(std::make_shared<Core>()) {}
+void PhpContext::__construct(Php::Parameters &params)
+{
+    // if no parameters were supplied, we stick with the default context
+    if (params.size() == 0) _core = std::make_shared<Core>();
+    
+    // the root object was supplied, create a new core
+    else _core = std::make_shared<Core>(params[0]);
+}
 
 /**
  *  Assign a variable to the javascript context
