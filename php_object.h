@@ -84,6 +84,13 @@ public:
     Php::Value __toString();
 
     /**
+     *  Method that is called when the object is invoked as if it was a function
+     *  @param  params
+     *  @return Php::Value
+     */
+    Php::Value __invoke(Php::Parameters &params);
+
+    /**
      *  Retrieve the iterator
      *  @return The iterator
      */

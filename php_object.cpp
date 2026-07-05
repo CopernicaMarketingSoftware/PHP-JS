@@ -159,6 +159,45 @@ Php::Value PhpObject::__toString()
 }
 
 /**
+ *  Method that is called when the object is invoked as if it was a function
+ *  @param  params
+ *  @return Php::Value
+ */
+Php::Value PhpObject::__invoke(Php::Parameters &params)
+{
+    // scope for the call
+    Scope scope(_core);
+
+    // get the object in a local variable
+    v8::Local<v8::Object> object(_object.Get(_core->isolate()).As<v8::Object>());
+    
+    // does the object also happen to be callable? for example because it is a function or a callable proxy or so?
+    if (!object->IsCallable()) throw Php::Exception("Object is not callable");
+
+    // get the function in a local variable
+    v8::Local<v8::Function> func(object.As<v8::Function>());
+    
+    // catch any errors that occur while either compiling or running the script
+    v8::TryCatch catcher(_core->isolate());
+
+    // create a new array with parameters
+    std::vector<v8::Local<v8::Value>> array;
+    array.reserve(params.size());
+
+    // iterate over all the given parameters and add them to the arrau
+    for (auto &param: params) array.push_back(FromPhp(_core->isolate(), param));
+
+    // now we can actually call the function
+    auto result = func->Call(_core->isolate(), scope, v8::Undefined(_core->isolate()), array.size(), array.data());
+
+    // did we catch an exception?
+    if (!catcher.HasCaught()) return result.IsEmpty() ? Php::Value(nullptr) : PhpVariable(_core->isolate(), result.ToLocalChecked());
+
+    // throw the exception
+    throw PhpException(_core->isolate(), catcher);
+}
+
+/**
  *  Retrieve the iterator
  *  @return The iterator
  */

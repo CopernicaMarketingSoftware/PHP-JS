@@ -67,7 +67,7 @@ std::shared_ptr<Core> Core::upgrade(v8::Isolate *isolate)
 v8::Local<v8::Value> Core::wrap(const Php::Value &object)
 {
     // if the object is already known to be a JS\Object
-    auto *instance = PhpBase::unwrap(this, object);
+    auto *instance = PhpBase::unwrap(object);
     
     // was this possible? then we reuse the original handle
     if (instance != nullptr) return instance->handle();

@@ -39,23 +39,16 @@ PhpBase::~PhpBase()
 
 /**
  *  Helper method to unwrap an object
- *  @param  core
  *  @param  value
  *  @return Php::Object
  */
-PhpBase *PhpBase::unwrap(const Core *core, const Php::Value &value)
+PhpBase *PhpBase::unwrap(const Php::Value &value)
 {
     // must be the right class
     if (!value.instanceOf(Names::Object) && !value.instanceOf(Names::Function)) return nullptr;
 
-    // get self-pointe
-    PhpBase *self = (PhpBase *)value.implementation();
-    
-    // if not set (should not occur)
-    if (self == nullptr) return nullptr;
-    
-    // check if the object comes from the same core!
-    return self->_core.get() == core ? self : nullptr;
+    // get self-pointer
+    return (PhpBase *)value.implementation();
 }
 
 /**

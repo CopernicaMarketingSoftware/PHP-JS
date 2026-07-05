@@ -70,11 +70,10 @@ public:
     
     /**
      *  Helper method to unwrap an object
-     *  @param  core
      *  @param  value
      *  @return Php::Base
      */
-    static PhpBase *unwrap(const Core *core, const Php::Value &value);
+    static PhpBase *unwrap(const Php::Value &value);
 
     /**
      *  Get the v8 handle
