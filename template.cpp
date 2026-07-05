@@ -452,10 +452,10 @@ v8::Intercepted Template::setProperty(v8::Local<v8::Name> property, v8::Local<v8
         // the object that is being accessed
         Php::Value object = Linker(isolate, info.This()).value();
 
-        // if the underlying variable is an array
-        if (object.isArray()) object.set(PhpVariable(isolate, input), PhpVariable(isolate, input));
+        // if the underlying variable is an array, or when there is no ArrayAccess implemented, we set the property the regular way
+        if (object.isArray() || !object.instanceOf("ArrayAccess")) object.set(PhpVariable(isolate, property), PhpVariable(isolate, input));
 
-        // make the call
+        // there is an ArrayAccess interface so we go through offsetSet()
         else object.call("offsetSet", PhpVariable(isolate, property), PhpVariable(isolate, input));
     }
     catch (const Php::Exception &exception)
