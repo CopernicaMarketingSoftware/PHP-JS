@@ -28,7 +28,7 @@ namespace JS {
 /**
  *  Constructor
  */
-Core::Core() : _platform(Platform::instance()), _isolate(this)
+Core::Core() : _isolate(this)
 {
     // when we access the isolate, we need a scope
     v8::HandleScope scope(_isolate);
@@ -47,7 +47,7 @@ Core::Core() : _platform(Platform::instance()), _isolate(this)
  *  Constructor with an alternative root object
  *  @param  root
  */
-Core::Core(const Php::Value &root) : _platform(Platform::instance()), _isolate(this)
+Core::Core(const Php::Value &root) : _isolate(this)
 {
     // when we access the isolate, we need a scope
     v8::HandleScope hscope(_isolate);
@@ -141,25 +141,8 @@ bool Core::assign(const Php::Value &name, const Php::Value &value, const Php::Va
 }
 
 /**
- *  Reset the platform, start with a clean sheet
- *  @return bool
- */
-void Core::reset()
-{
-    // when we access the isolate, we need a scope
-    v8::HandleScope scope(_isolate);
-
-    // create a context
-    v8::Local<v8::Context> context(v8::Context::New(_isolate));
-
-    // we want to persist the context
-    _context.Reset(_isolate, context);
-}    
-
-/**
  *  Parse a piece of javascript code
  *  @param  source      the code to execute
- *  @param  timeout     possible timeout in seconds
  *  @return Php::Value
  *  @throws Php::Exception
  */
@@ -169,7 +152,7 @@ Php::Value Core::evaluate(const Php::Value &source, const Php::Value &timeout)
     Script script(shared_from_this(), source.clone(Php::Type::String).rawValue());
     
     // evaluate the script
-    return script.execute(timeout);
+    return script.execute(shared_from_this(), timeout);
 }
     
 /**

@@ -23,58 +23,50 @@ namespace JS {
 
 /**
  *  Constructor
- *  @param  script
- *  @throws Php::Exception
- */
-Script::Script(const char *script) :
-    Script(std::make_shared<Core>(), script) {}
-
-/**
- *  Constructor
+ *  Although the theory is that a context is not needed to compile an unbound javascript, it turns
+ *  out that the CompileUnboundScript does seem to crash without a current context, hence we pass a core
  *  @param  core
- *  @param  script
+ *  @param  source
  *  @throws Php::Exception
  */
-Script::Script(const std::shared_ptr<Core> &core, const char *source) : _core(core)
+Script::Script(const std::shared_ptr<Core> &core, const char *source)
 {
-    // create a scope
-    Scope scope(_core);
-
-    // we need the isolate
-    auto *isolate = _core->isolate();
+    // enter scope
+    Scope scope(core);
 
     // catch any errors that occur while either compiling or running the script
-    v8::TryCatch catcher(isolate);
+    v8::TryCatch catcher(core->isolate());
     
     // compile the code into a script
-    auto script = v8::String::NewFromUtf8(isolate, source).ToLocalChecked();
+    auto script = v8::String::NewFromUtf8(core->isolate(), source).ToLocalChecked();
 
     // dont know what this does
     v8::ScriptCompiler::Source script_source(script);
 
     // compile the script, not yet bound to a context
-    auto compiled = v8::ScriptCompiler::CompileUnboundScript(isolate, &script_source);
+    auto compiled = v8::ScriptCompiler::CompileUnboundScript(core->isolate(), &script_source);
 
     // check for success
-    if (!compiled.IsEmpty()) _script.Reset(isolate, compiled.ToLocalChecked());
+    if (!compiled.IsEmpty()) _script.Reset(core->isolate(), compiled.ToLocalChecked());
 
     // report error
-    else throw PhpException(isolate, catcher);
+    else throw PhpException(core->isolate(), catcher);
 }
 
 /**
  *  Execute the script
+ *  @param  core
  *  @param  timeout
  *  @return Php::Value
  *  @throws Php::Exception
  */
-Php::Value Script::execute(time_t timeout)
+Php::Value Script::execute(const std::shared_ptr<Core> &core, time_t timeout)
 {
     // create a scope
-    Scope scope(_core);
+    Scope scope(core);
 
     // we need the isolate
-    auto *isolate = _core->isolate();
+    auto *isolate = core->isolate();
     
     // install a timeout
     Timeout timer(isolate, timeout);

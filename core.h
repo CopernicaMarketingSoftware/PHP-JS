@@ -16,7 +16,6 @@
  *  Dependencies
  */
 #include <phpcpp.h>
-#include "platform.h"
 #include "isolate.h"
 
 /**
@@ -30,12 +29,6 @@ namespace JS {
 class Core : public std::enable_shared_from_this<Core>
 {
 private:
-    /**
-     *  Pointer to the full javascript v8 platform
-     *  @var Platform
-     */
-    Platform *_platform;
-
     /**
      *  The Isolate that manages the v8 environment (this is a bit like the "window"
      *  platform in a browser, a fully separated environment)
@@ -107,12 +100,6 @@ public:
      *  @return bool
      */
     bool assign(const Php::Value &name, const Php::Value &value, const Php::Value &attributes);
-
-    /**
-     *  Reset the platform, start with a clean sheet
-     *  @return bool
-     */
-    void reset();
 
     /**
      *  Parse a piece of javascript code

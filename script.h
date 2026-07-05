@@ -28,28 +28,16 @@ class Script
 {
 private:
     /**
-     *  Shared pointer to the actual core data
-     *  @var std::shared_ptr<Core>
-     */
-    std::shared_ptr<Core> _core;
-
-    /**
      *  The compiled script, not bound to a context. This allows us to reset the context between calls
      *  @var v8::Global<v8::UnboundScript>
      */
     v8::Global<v8::UnboundScript> _script;
 
-
 public:
     /**
      *  Constructor
-     *  @param  script
-     *  @throws Php::Exception
-     */
-    Script(const char *script);
-
-    /**
-     *  Constructor
+     *  Although the theory is that a context is not needed to compile an unbound javascript, it turns
+     *  out that the CompileUnboundScript does seem to crash without a current context, hence we pass a core
      *  @param  core
      *  @param  script
      *  @throws Php::Exception
@@ -69,11 +57,12 @@ public:
     
     /**
      *  Execute the script
+     *  @param  core
      *  @param  timeout
      *  @return Php::Value
      *  @throws Php::Exception
      */
-    Php::Value execute(time_t timeout);
+    Php::Value execute(const std::shared_ptr<Core> &core, time_t timeout);
 };
 
 /**

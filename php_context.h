@@ -79,18 +79,20 @@ public:
     Php::Value assign(Php::Parameters &params);
 
     /**
-     *  Reset the variables within this context
-     *  @return Php::Value
-     */
-    Php::Value reset();
-
-    /**
      *  Parse a piece of javascript code
      *  @param  params  array with one parameter: the code to execute
      *  @return Php::Value
      *  @throws Php::Exception
      */
     Php::Value evaluate(Php::Parameters &params);
+    
+    /**
+     *  Parse a piece of javascript code for multi-use, returns a JS\Script
+     *  @param  params  array with one parameter: the code to execute
+     *  @return Php::Value
+     *  @throws Php::Exception
+     */
+    Php::Value parse(Php::Parameters &params);
 };
 
 /**

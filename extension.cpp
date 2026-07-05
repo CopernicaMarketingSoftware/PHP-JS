@@ -67,10 +67,13 @@ extern "C" {
             Php::ByVal("attribute", Php::Type::Numeric, false)
         });
 
-        // reset the context, start with a clean sheet
-        context.method<&JS::PhpContext::reset>("reset");
+        // add a method to just parse a script, the script is then linked to this
+        // context and can be executed multiple times
+        context.method<&JS::PhpContext::parse>("parse", {
+            Php::ByVal("script", Php::Type::String, true)
+        });
 
-        // add a method to parse + execute some script
+        // add a method to parse + execute a script
         context.method<&JS::PhpContext::evaluate>("evaluate", {
             Php::ByVal("script", Php::Type::String, true),
             Php::ByVal("timeout", Php::Type::Numeric, false)
@@ -89,7 +92,9 @@ extern "C" {
         });
 
         // add a script-method to reset
-        script.method<&JS::PhpScript::reset>("reset");
+        script.method<&JS::PhpScript::reset>("reset", {
+            Php::ByVal("root", Php::Type::Object, false),
+        });
 
         // add a script-method to execute
         script.method<&JS::PhpScript::execute>("execute", {

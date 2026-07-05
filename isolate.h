@@ -24,6 +24,7 @@
  */
 #include <v8.h>
 #include "template.h"
+#include "platform.h"
 
 /**
  *  Start namespace
@@ -41,6 +42,12 @@ class Core;
 class Isolate final
 {
 private:
+    /**
+     *  Pointer to the full javascript v8 platform
+     *  @var Platform
+     */
+    Platform *_platform;
+
     /**
      *  The create-params
      *  v8::Isolate::CreateParams
@@ -70,7 +77,7 @@ public:
      *  Constructor that is called every time a "core" is created that needs an isolate
      *  @paran  context
      */
-    Isolate(Core *core)
+    Isolate(Core *core) : _platform(Platform::instance())
     {
         // do we already have an isolate
         if (_instances++ != 0) return;
@@ -95,7 +102,7 @@ public:
     {
         // was this the last reference
         if (--_instances != 0) return;
-        
+
         // remove the templates first before we dispose the isolate
         _templates.clear();
         

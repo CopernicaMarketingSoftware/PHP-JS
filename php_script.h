@@ -46,8 +46,22 @@ private:
 public:
     /**
      *  Constructor
+     *  This one is typically used for "new JS\Script(...)" calls
      */
     PhpScript() : _core(std::make_shared<Core>()) {}
+
+    /**
+     *  Constructor
+     *  This one is typically used for JS\Context->compile(...) calls
+     *  @param  core
+     *  @param  source
+     *  @throws Php::Exception
+     */
+    PhpScript(const std::shared_ptr<Core> &core, const char *source) : _core(core)
+    {
+        // construct the script right now
+       _script.emplace(core, source);
+    }
 
     /**
      *  No copying allowed
@@ -99,13 +113,17 @@ public:
     }
     
     /**
-     *  Reset the script
+     *  Reset the context of the screen to the initial state
+     *  @param  params  array with one optional parameter: the new root object
      *  @return Php::Value
      */
-    Php::Value reset()
+    Php::Value reset(Php::Parameters &params)
     {
-        // pass on
-        _core->reset();
+        // install the new core
+        if (params.size() == 0) _core = std::make_shared<Core>();
+        
+        // start with the root object
+        else _core = std::make_shared<Core>(params[0]);
 
         // allow chaining
         return this;
@@ -120,7 +138,19 @@ public:
     Php::Value execute(Php::Parameters &params)
     {
         // pass on
-        return _script->execute(params.size() == 0 ? Php::Value(0) : params[0]);
+        return _script->execute(_core, params.size() == 0 ? Php::Value(0) : params[0]);
+    }
+    
+    /**
+     *  Alias for execute
+     *  @param  params  array with one parameter: the code to execute
+     *  @return Php::Value
+     *  @throws Php::Exception
+     */
+    Php::Value __invoke(Php::Parameters &params)
+    {
+        // pass on
+        return _script->execute(_core, params.size() == 0 ? Php::Value(0) : params[0]);
     }
 };
 

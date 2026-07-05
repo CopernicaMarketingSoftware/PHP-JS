@@ -11,6 +11,8 @@
  *  Dependencies
  */
 #include "php_context.h"
+#include "php_script.h"
+#include "names.h"
 
 /**
  *  Begin of namespace
@@ -56,19 +58,6 @@ Php::Value PhpContext::assign(Php::Parameters &params)
 }
 
 /**
- *  Reset the variables within this context
- *  @return Php::Value
- */
-Php::Value PhpContext::reset()
-{
-    // pass on
-    _core->reset();
-    
-    // allow chaining
-    return this;
-}
-
-/**
  *  Parse a piece of javascript code
  *
  *  @param  params  array with one parameter: the code to execute
@@ -79,6 +68,24 @@ Php::Value PhpContext::evaluate(Php::Parameters &params)
 {
     // pass on
     return _core->evaluate(params[0], params.size() > 1 ? params[1] : Php::Value(0));
+}
+
+/**
+ *  Parse a piece of javascript code for multi-use, returns a JS\Script
+ *  @param  params  array with one parameter: the code to execute
+ *  @return Php::Value
+ *  @throws Php::Exception
+ */
+Php::Value PhpContext::parse(Php::Parameters &params)
+{
+    // first parameter must the source
+    Php::Value source = params[0];
+    
+    // construct a script (can throw)
+    auto *script = new PhpScript(_core, source.clone(Php::Type::String).rawValue());
+    
+    // wrap in user space object
+    return Php::Object(Names::Script, script);
 }
     
 /**
