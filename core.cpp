@@ -31,6 +31,9 @@ namespace JS {
 Core::Core() : _isolate(this)
 {
     // when we access the isolate, we need a scope
+    v8::Isolate::Scope iscope(_isolate);
+    
+    // also a scope for the handles
     v8::HandleScope scope(_isolate);
     
     // create a context
