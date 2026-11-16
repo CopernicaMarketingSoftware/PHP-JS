@@ -53,6 +53,9 @@ Core::Core() : _isolate(this)
 Core::Core(const Php::Value &root) : _isolate(this)
 {
     // when we access the isolate, we need a scope
+    v8::Isolate::Scope iscope(_isolate);
+
+    // when we access the isolate, we need a scope
     v8::HandleScope hscope(_isolate);
     
     // create a template for the root
